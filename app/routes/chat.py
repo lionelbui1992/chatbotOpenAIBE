@@ -3,8 +3,11 @@ import json
 
 bp = Blueprint('chat', __name__, url_prefix='/api/v1/chat')
 
-@bp.route('/', methods=['GET'])
+@bp.route('/', methods=['POST'])
 def get_chat():
+    return jsonify({})
+@bp.route('/completions/', methods=['POST'])
+def get_chat_completions():
     # request format:
     # {
     #     messages: 
@@ -75,12 +78,16 @@ def get_chat():
             for value in message['plot']:
                 if value == "":
                     value = "N/A"
+                # check if value is not string, convert to string
+                if not isinstance(value, str):
+                    value = str(value)
 
-                if header_column == "":
-                    header_column = "N/A"
-                else:
+                if 'index' in message['header_column']:
                     header_column = message['header_column'][index]
-
+                    # debug header_column value
+                else:
+                    header_column = "N/A"
+                # header_column = message['header_column'][1] # index
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
 

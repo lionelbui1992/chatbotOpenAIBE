@@ -18,7 +18,7 @@ def init_db(app):
         # db.init_app(app)
         # app.db = db
     else:
-        raise ValueError("Unsupported database type: " + app.config['DATABASE_TYPE'])
+        raise ValueError("Unsupported database type: `" + app.config['DATABASE_TYPE'] + "`")
     
 # get collection
 def get_collection(app):
