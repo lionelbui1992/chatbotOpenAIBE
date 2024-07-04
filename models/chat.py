@@ -92,5 +92,11 @@ def get_chat_completions(request):
 
     # Serialize the dictionary to a JSON string
     # chat_completion_json = json.dumps(completion_dict, indent=2)
+    # clone choices message to choices delta: choices[]['delta'] = choices[]['message']
+    for choice in completion_dict['choices']:
+        choice['delta'] = choice['message']
+
+    
+
 
     return completion_dict

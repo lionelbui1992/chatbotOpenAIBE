@@ -7,6 +7,7 @@ import os
 from openai import OpenAI
 from config import Config
 from models.chat import get_chat_completions
+from models.models import get_models
 
 load_dotenv()
 
@@ -66,14 +67,6 @@ def chat_completions_v1():
 def models_v1():
     if request.method == 'OPTIONS':
         return '', 200
-    models = [
-        {
-            "id": "gpt-4o",
-            "object": "model",
-            "created": int(time.time()),
-            "owned_by": "domain"
-        },
-    ]
-    return jsonify(models)
+    return jsonify(get_models(request))
 if __name__ == '__main__':
     app.run(debug=True)
