@@ -58,7 +58,7 @@ def chat_v1():
 def chat_completions_v1():
     if request.method == 'OPTIONS':
         return '', 200
-    return get_chat_completions(request)
+    return jsonify(get_chat_completions(request))
 
 # /api/v1/models
 @app.route('/api/v1/models', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
@@ -68,10 +68,10 @@ def models_v1():
         return '', 200
     models = [
         {
-            "id": "main-domain",
+            "id": "gpt-4o",
             "object": "model",
             "created": int(time.time()),
-            "owned_by": "openai-internal"
+            "owned_by": "domain"
         },
     ]
     return jsonify(models)

@@ -1,4 +1,4 @@
-from flask import jsonify, current_app
+from flask import json, jsonify, current_app
 from db import collection
 
 
@@ -88,4 +88,9 @@ def get_chat_completions(request):
     )
     # end clientAi create completions
 
-    return completion.to_json()
+    completion_dict = completion.to_dict()
+
+    # Serialize the dictionary to a JSON string
+    # chat_completion_json = json.dumps(completion_dict, indent=2)
+
+    return completion_dict
