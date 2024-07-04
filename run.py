@@ -28,8 +28,17 @@ def index():
     # Handle GET, PUT, POST requests here
     return jsonify({'message': 'Welcome to the API!'})
 
+# /api
+@app.route('/api', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+def api():
+    if request.method == 'OPTIONS':
+        return '', 200
+    return jsonify({'message': 'Welcome to the API!'})
+
 # /api/v1
 @app.route('/api/v1', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 def api_v1():
     if request.method == 'OPTIONS':
         return '', 200
@@ -37,6 +46,7 @@ def api_v1():
 
 # /api/v1/chat
 @app.route('/api/v1/chat', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/chat/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 def chat_v1():
     if request.method == 'OPTIONS':
         return '', 200
@@ -44,6 +54,7 @@ def chat_v1():
 
 # /api/v1/chat/completions
 @app.route('/api/v1/chat/completions', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/chat/completions/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 def chat_completions_v1():
     if request.method == 'OPTIONS':
         return '', 200
@@ -51,6 +62,7 @@ def chat_completions_v1():
 
 # /api/v1/models
 @app.route('/api/v1/models', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/models/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 def models_v1():
     if request.method == 'OPTIONS':
         return '', 200
