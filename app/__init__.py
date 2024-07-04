@@ -11,7 +11,8 @@ from flask_cors import CORS
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    CORS(app, resources={r"*": {"origins": "*", "methods": "*", "allow_headers": "*", "expose_headers": "*"}})
+    
+    CORS(app, resources={r"*": {"origins": "*", "methods": "*", "allow_headers": "*", "expose_headers": "*", "supports_credentials": "true"}})
 
     init_db(app)  # Initialize the database
     init_openai(app)  # Initialize OpenAI

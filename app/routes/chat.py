@@ -1,12 +1,17 @@
 from flask import Blueprint, jsonify, request, current_app
 import json
+from flask_cors import CORS, cross_origin
 
 bp = Blueprint('chat', __name__, url_prefix='/api/v1/chat')
 
+cors = CORS(bp, resources={r"*": {"origins": "*", "methods": "*", "allow_headers": "*", "expose_headers": "*"}})
+
 @bp.route('/', methods=['POST'])
+@cross_origin(origin='*', headers=['Content- Type', 'Authorization'])
 def get_chat():
     return jsonify({})
 @bp.route('/completions/', methods=['POST'])
+@cross_origin(origin='*', headers=['Content- Type', 'Authorization'])
 def get_chat_completions():
     # request format:
     # {
