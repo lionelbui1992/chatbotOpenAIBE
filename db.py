@@ -12,3 +12,4 @@ MONGO_COLLECTION = os.getenv('MONGO_COLLECTION')
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db[MONGO_COLLECTION]
+collection_users = db['users']

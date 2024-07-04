@@ -6,6 +6,7 @@ import os
 
 from openai import OpenAI
 from config import Config
+from models.auth import auth_login
 from models.chat import get_chat_completions
 from models.models import get_models
 
@@ -44,6 +45,16 @@ def api_v1():
     if request.method == 'OPTIONS':
         return '', 200
     return jsonify({'message': 'Welcome to the API v1!'})
+
+# /auth
+
+@app.route('/api/v1/auth', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/auth/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+def auth():
+    if request.method == 'OPTIONS':
+        return '', 200
+    return jsonify(auth_login(request))
+
 
 # /api/v1/chat
 @app.route('/api/v1/chat', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
