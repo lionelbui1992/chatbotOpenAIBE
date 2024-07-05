@@ -1,3 +1,5 @@
+from flask import jsonify
+from flask_jwt_extended import create_access_token
 from db import collection_users
 
 
@@ -11,11 +13,42 @@ def auth_login(request):
         return {"error": "Invalid email or password"}
     user = collection_users.find_one({"email": email, "password": password})
     if user:
-        print(user)
-        token = generate_token(user['_id'])
-        return token
+        # format:
+        # {
+        #     "status": "success",
+        #     "message": "Login successful",
+        #     "data": {
+        #         "user": {
+        #         "id": "123456",
+        #         "email": "user@example.com",
+        #         "name": "John Doe"
+        #         },
+        #         "token": "jwt_token_here"
+        #     }
+        # }
+
+        user_id = str(user['_id'])
+
+        access_token = create_access_token(identity=user_id)
+
+        # save the token to the user
+        collection_users.update_one({'_id': user['_id']}, {'$set': {'token': access_token}})
+
+        return {
+            "status": "success",
+            "message": "Login successful",
+            "data": {
+                "user": {
+                    "id": user_id,
+                    "email": str(user['email']),
+                    "name": str(user['name']),
+                    "settings": user['settings']
+                },
+                "token": access_token
+            }
+        }
     else:
-        return {"error": "Invalid email or password"}
+        return {"status": "error", "message": "Invalid email or password"}
 
 def generate_token(user_id):
     # Implement the logic to generate a token based on the user_id

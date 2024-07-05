@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 class Config:
     # Get config from .env file
     load_dotenv()
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'you-will-never-guess')
+    SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'you-will-never-guess')
     DATABASE_TYPE = 'mongodb'
     DB_NAME = os.environ.get('DB_NAME', 'sample_mflix')
     MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://lionelbui:pEciuiTKR28LKOMs@cluster0.hm7buca.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')

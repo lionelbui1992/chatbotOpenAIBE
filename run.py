@@ -9,15 +9,22 @@ from config import Config
 from models.auth import auth_login
 from models.chat import get_chat_completions
 from models.models import get_models
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config.from_object(Config)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
+
+users = []  # Temporary in-memory user store
+
 CORS(app)  # Enable CORS for all domains
 
 # Secret key for session management
-app.secret_key = os.getenv('SECRET_KEY')
+# app.secret_key = os.getenv('SECRET_KEY')
 
 app.openAIClient = OpenAI(
     api_key=app.config['OPENAI_API_KEY'],
@@ -53,7 +60,11 @@ def api_v1():
 def auth():
     if request.method == 'OPTIONS':
         return '', 200
-    return jsonify(auth_login(request))
+    auth_data = auth_login(request)
+    if auth_data['status'] == 'success':
+        return jsonify(auth_data)
+    else:
+        return jsonify(auth_data), 401
 
 
 # /api/v1/chat
