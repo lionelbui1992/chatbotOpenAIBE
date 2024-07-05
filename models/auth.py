@@ -10,7 +10,10 @@ def auth_login(request):
     password = data.get('password')
     # Check if the email and password are valid
     if not email or not password:
-        return {"error": "Invalid email or password"}
+        return {
+            "status": "error",
+            "message": "Email and password are required"
+        }
     user = collection_users.find_one({"email": email, "password": password})
     if user:
         # format:
