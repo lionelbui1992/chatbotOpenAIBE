@@ -53,12 +53,15 @@ def get_chat_completions(request):
 
     # run pipeline
     aggregate_result    = collection.aggregate(pipeline)
+
     full_plot           = ""
     header_column       = ""
+    score               = 0
     # prompt for message in aggregate_result, should be manage by tags
-    messages.append({"role": "system", "content": "show me the server info bellow with table format, pick one of the server bellow:"})
+    messages.append({"role": "system", "content": "show me the information bellow with table format, pick one of the server bellow:"})
     for message in aggregate_result:
         # title = message['title']
+        score = message['score']
         index = 0
         for value in message['plot']:
             if value == "":
@@ -82,10 +85,19 @@ def get_chat_completions(request):
     # end create prompting message
 
     # clientAi create completions
-    completion = current_app.openAIClient.chat.completions.create(
-        model=current_app.config['OPENAI_MODEL'],
-        messages= messages
-    )
+    if(score < 0.55):
+        completion = current_app.openAIClient.chat.completions.create(
+            model=current_app.config['OPENAI_MODEL'],
+            messages= [
+                {"role": "system", "content": "Write Some thing for bellow text:" },
+                {"role": "system", "content": input_text },
+            ]
+        )
+    else:
+        completion = current_app.openAIClient.chat.completions.create(
+            model=current_app.config['OPENAI_MODEL'],
+            messages= messages
+        )
     # end clientAi create completions
 
     completion_dict = completion.to_dict()
