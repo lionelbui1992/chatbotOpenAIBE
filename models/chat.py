@@ -1,7 +1,7 @@
 from flask import json, jsonify, current_app
 from db import collection
 
-
+    
 def get_chat_completions(request):
     # request format:
     # {
@@ -58,7 +58,8 @@ def get_chat_completions(request):
     header_column       = ""
     score               = 0
     # prompt for message in aggregate_result, should be manage by tags
-    messages.append({"role": "system", "content": "show me the information bellow with table format, pick one of the server bellow:"})
+    messages.append({"role": "system", "content": "show me the information bellow:"})
+    messages.append({"role": "system", "content":input_text})
     for message in aggregate_result:
         # title = message['title']
         score = message['score']
@@ -89,7 +90,7 @@ def get_chat_completions(request):
         completion = current_app.openAIClient.chat.completions.create(
             model=current_app.config['OPENAI_MODEL'],
             messages= [
-                {"role": "system", "content": "Write Some thing for bellow text:" },
+                {"role": "system", "content": "Write nature langage for bellow text:" },
                 {"role": "system", "content": input_text },
             ]
         )
