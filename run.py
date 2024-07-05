@@ -6,7 +6,7 @@ import os
 
 from openai import OpenAI
 from config import Config
-from models.auth import auth_login
+from models.auth import auth_login, auth_register
 from models.chat import get_chat_completions
 from models.models import get_models
 from flask_bcrypt import Bcrypt
@@ -60,7 +60,28 @@ def api_v1():
 def auth():
     if request.method == 'OPTIONS':
         return '', 200
+    return jsonify({'message': 'Welcome to the Auth API v1!'})
+
+
+# /api/v1/auth/login
+@app.route('/api/v1/auth/login', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/login/', methods=['POST', 'OPTIONS'])
+def login():
+    if request.method == 'OPTIONS':
+        return '', 200
     auth_data = auth_login(request)
+    if auth_data['status'] == 'success':
+        return jsonify(auth_data)
+    else:
+        return jsonify(auth_data), 401
+
+
+@app.route('/api/v1/auth/register', methods=['POST', 'OPTIONS'])
+@app.route('/api/v1/auth/register/', methods=['POST', 'OPTIONS'])
+def register():
+    if request.method == 'OPTIONS':
+        return '', 200
+    auth_data = auth_register(request)
     if auth_data['status'] == 'success':
         return jsonify(auth_data)
     else:
