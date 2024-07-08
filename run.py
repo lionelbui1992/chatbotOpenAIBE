@@ -13,6 +13,7 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 from models.google import user_google_connect
+from models.user_settings import get_user_settings, set_user_settings
 
 load_dotenv()
 
@@ -114,14 +115,6 @@ def models_v1():
         return '', 200
     return jsonify(get_models(request))
 
-# /api/v1/settings
-@app.route('/api/v1/settings', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
-@app.route('/api/v1/settings/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
-def settings_v1():
-    if request.method == 'OPTIONS':
-        return '', 200
-    return jsonify({'message': 'Welcome to the Settings API v1!'})
-
 # /api/v1/settings/google
 @app.route('/api/v1/settings/google', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 @app.route('/api/v1/settings/google/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
@@ -129,6 +122,22 @@ def settings_google_v1():
     if request.method == 'OPTIONS':
         return '', 200
     data = user_google_connect(request)
+    if data['status'] == 'success':
+        return jsonify(data)
+    else:
+        return jsonify(data), 401
+    
+# /api/v1/settings
+@app.route('/api/v1/settings', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/settings/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+def settings_v1():
+    if request.method == 'OPTIONS':
+        return '', 200
+    switcher = {
+        'GET': get_user_settings,
+        'PUT': set_user_settings
+    }
+    data = switcher[request.method](request)
     if data['status'] == 'success':
         return jsonify(data)
     else:
