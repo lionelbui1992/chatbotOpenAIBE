@@ -21,7 +21,7 @@ def update_google_sheet(values, rage):
 
 def analysis_text(input_text):
     var_messages=[
-        {"role": "system", "content": "Please analyze the attributes to update from the string below. Separate the attributes with a comma."},
+        {"role": "system", "content": "Please analyze the attributes to update from the string below, without name or subject. Separate the attributes with a comma."},
         {"role": "user", "content": input_text}
     ]
     completion = current_app.openAIClient.chat.completions.create(
@@ -137,7 +137,7 @@ def get_chat_completions(request):
         for result in results:
             _id = result['_id']
             action_embedding_arr = result['plot']
-            row_index = result['row_index']
+            row_index = result['row_index'] - 1
             column_count = result['column_count']
         rage = 'Sheet1!'+ chr(65 + column_count) + str(row_index)
         attributes = analysis_text(input_text)
@@ -163,36 +163,42 @@ def get_chat_completions(request):
         header_column       = ""
         score               = 0
         full_plot           = ""
+        target_score       = 0 # target score to show message
+
         # prompt for message in aggregate_result, should be manage by tags
-        messages.append({"role": "system", "content": "show me the information bellow:"})
+        messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
         messages.append({"role": "system", "content":input_text})
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
-            index = 0
-            for value in message['plot']:
-                if value == "":
-                    value = "N/A"
-                # check if value is not string, convert to string
-                if not isinstance(value, str):
-                    value = str(value)
+            print("score: ", score)
+            if(score > 0.8):
+                target_score = 1
+                index = 0
+                for value in message['plot']:
+                    if value == "":
+                        value = "N/A"
+                    # check if value is not string, convert to string
+                    if not isinstance(value, str):
+                        value = str(value)
 
-                if 'index' in message['header_column']:
-                    header_column = message['header_column'][index]
-                    # debug header_column value
-                else:
-                    header_column = "N/A"
-                # header_column = message['header_column'][1] # index
-                full_plot = full_plot + header_column + ":" + value + ", "
-                index += 1
+                    if 'index' in message['header_column']:
+                        header_column = message['header_column'][index]
+                        # debug header_column value
+                    else:
+                        header_column = "N/A"
+                    # header_column = message['header_column'][1] # index
+                    full_plot = full_plot + header_column + ":" + value + ", "
+                    index += 1
 
-            messages.append({"role": "user", "content": full_plot })
+                messages.append({"role": "user", "content": full_plot })
 
-
+        #print("target_score: ", target_score)
+        #print("full_plot: ", full_plot)
         # clientAi create completions
-        if(score < 0.55):
+        if(target_score == 0):
             messages= [
-                {"role": "system", "content": "Write nature langage for bellow text:" },
+                {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
                 {"role": "system", "content": input_text },
             ]
             completion = show_message(messages)
@@ -200,15 +206,17 @@ def get_chat_completions(request):
             completion = show_message(messages)
 
         # end clientAi create completions
+    try:
+        completion_dict = completion.to_dict()
 
-    completion_dict = completion.to_dict()
+        # Serialize the dictionary to a JSON string
+        # chat_completion_json = json.dumps(completion_dict, indent=2)
+        # clone choices message to choices delta: choices[]['delta'] = choices[]['message']
 
-    # Serialize the dictionary to a JSON string
-    # chat_completion_json = json.dumps(completion_dict, indent=2)
-    # clone choices message to choices delta: choices[]['delta'] = choices[]['message']
+        for choice in completion_dict['choices']:
+            choice['delta'] = choice['message']
 
-    for choice in completion_dict['choices']:
-        choice['delta'] = choice['message']
-
-    # return the JSON string
-    return completion_dict
+        # return the JSON string
+        return completion_dict
+    except Exception as e:
+        return jsonify({"error": str(e)})
