@@ -14,3 +14,5 @@ db = client[DB_NAME]
 collection = db[MONGO_COLLECTION]
 collection_users = db['users']
 collection_action = db['embedded_actions']
+collection_attribute = db['embedded_attributes']
+
