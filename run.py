@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 
 from openai import OpenAI
+import requests
 from config import Config
 from models.auth import auth_login, auth_refresh_token, auth_register
 from models.chat import get_chat_completions
@@ -186,6 +187,46 @@ def user_settings_v1():
         return jsonify(data)
     else:
         return jsonify(data), 401
+
+@app.route('/api/v1/user/auth')
+def auth():
+    auth_url = (
+        f"{Config.GOOGLE_AUTHORIZATION_URL}?response_type=code"
+        f"&client_id={Config.GOOGLE_CLIENT_ID}"
+        f"&redirect_uri={Config.GOOGLE_REDIRECT_URI}"
+        f"&scope=https://www.googleapis.com/auth/drive.metadata.readonly "
+        f"https://www.googleapis.com/auth/spreadsheets.readonly"
+        f"&access_type=offline"
+    )
+    return redirect(auth_url)
+
+@app.route('/api/v1/user/oauth2callback')
+def oauth2callback():
+    code = request.args.get('code')
+    data = {
+        'code': code,
+        'client_id': Config.GOOGLE_CLIENT_ID,
+        'client_secret': Config.GOOGLE_CLIENT_SECRET,
+        'redirect_uri': Config.GOOGLE_REDIRECT_URI,
+        'grant_type': 'authorization_code',
+    }
+    response = requests.post(Config.GOOGLE_TOKEN_URL, data=data)
+    token_response = response.json()
+    return jsonify(token_response)
+
+@app.route('/api/v1/user/save', methods=['POST'])
+def save_user():
+    user_info = request.json
+    # Save user information to your database
+    print('Received user info:', user_info)
+    return jsonify({'message': 'User info saved successfully'})
+
+@app.route('/api/v1/user/saveDetails', methods=['POST'])
+def save_details():
+    details = request.json
+    # Save the selected details to your database
+    print('Received selected details:', details)
+    return jsonify({'message': 'Selected details saved successfully'})
 
 if __name__ == '__main__':
     app.run(debug=True)
