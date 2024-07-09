@@ -229,9 +229,9 @@ def get_chat_completions(request):
                 value = embedding.split(":")[1]
                 search_attribute = embedding_search_attribute(embedding_function(label))
                 for message in search_attribute:
-                    column_index = message['column_index']
-                    column_name = chr(65 + column_index)
-                    print("score: ", message['score'])
+                    if message['score'] > 0.8:
+                        column_index = message['column_index']
+                        column_name = chr(65 + column_index)
 
                 print("label: ", label)
                 print("value: ", value)
