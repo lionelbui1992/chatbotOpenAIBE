@@ -205,6 +205,7 @@ def get_chat_completions(request):
     if search_total:
         for message in search_total:
             total_row = message['total']
+            print(message)
 
     # handle action
     action_score_status = False
