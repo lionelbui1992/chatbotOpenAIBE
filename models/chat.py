@@ -217,6 +217,8 @@ def get_chat_completions(request):
     action_embedding_arr =[]
     target_action = ""
     rage = ""
+    column_index = ""
+    column_name = ""
 
     if action_score_status:
         
@@ -239,7 +241,7 @@ def get_chat_completions(request):
                 print("column_name: ", column_name)
 
                 if has_attribute:
-                    if column_index:
+                    if column_name:
                         rage = "Sheet1!"+column_name + str(row_index)
                         print("rage: ", rage)
                         update_google_sheet([[value]],rage)
@@ -249,7 +251,7 @@ def get_chat_completions(request):
                         print("rage: ", rage)
                         update_google_sheet([[value]],rage)
                 else:
-                    if column_index:
+                    if column_name:
                         rage = "Sheet1!"+column_name + str(total_row)
                         print("rage: ", rage)
                         update_google_sheet([[value]],rage)
