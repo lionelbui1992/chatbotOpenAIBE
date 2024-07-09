@@ -265,6 +265,7 @@ def get_chat_completions(request):
             messages.append({"role": "system", "content": "Sorry, I can't update the information, please try again!"})
 
     # end handle action
+    print("target_action: ", target_action)
     completion = []
     if target_action == "has_action":
         completion = show_message(messages)
@@ -286,7 +287,7 @@ def get_chat_completions(request):
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
-            #print("score: ", score)
+            print("score: ", score)
             if(score > 0.8):
                 target_score = 1
                 index = 0
