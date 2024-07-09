@@ -175,14 +175,14 @@ def get_chat_completions(request):
    
     data = request.get_json()
     messages = data.get('messages', [])
-    print("messages: ", messages)
+    #print("messages: ", messages)
     if not messages:
         return jsonify({"error": "No messages provided"})
     
     # get latest message content text
     latest_message = messages[-1].get('content', "")
     input_text = latest_message[0].get('text', "")
-
+    print("messages: ", input_text)
 
 
     # get the embedding
