@@ -208,7 +208,7 @@ def get_chat_completions(request):
     for textabc in input_text.split(" "):
         search_vector_abc = embedding_function(textabc)
         action_score = embedding_search_action(search_vector_abc)
-        print("action_score: ", action_score)
+        #print("action_score: ", action_score)
         if  action_score > 0.7:
             action_score_status = True
             break
@@ -230,7 +230,14 @@ def get_chat_completions(request):
                 search_attribute = embedding_search_attribute(embedding_function(label))
                 for message in search_attribute:
                     column_index = message['column_index']
-                column_name = chr(65 + column_index)
+                    column_name = chr(65 + column_index)
+                    print("score: ", message['score'])
+
+                print("label: ", label)
+                print("value: ", value)
+                print("column_index: ", column_index)
+                print("column_name: ", column_name)
+
                 if has_attribute:
                     if column_index:
                         rage = "Sheet1!"+column_name + str(row_index)
