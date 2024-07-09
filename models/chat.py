@@ -152,8 +152,10 @@ def embedding_search_action(searchVector):
     action_funtion = collection_action.aggregate(pipeline)
     action = ""
     for message in action_funtion:
-        if message['score'] > 0.5:
+        print("score: ", message['score'])
+        if message['score'] > 0.6:
             action = message['title']
+            print("title: ", message['title'])
 
     return action
 
@@ -183,6 +185,8 @@ def get_chat_completions(request):
     latest_message = messages[-1].get('content', "")
     input_text = latest_message[0].get('text', "")
 
+
+
     # get the embedding
     search_vector = embedding_function(input_text)
     # end get the embedding
@@ -203,7 +207,10 @@ def get_chat_completions(request):
         for message in search_total:
             total_row = message['total']
     # handle action
-    action = embedding_search_action(search_vector)
+    for textabc in input_text.split(" "):
+        search_vector_abc = embedding_function(textabc)
+        action = embedding_search_action(search_vector_abc)
+        print("action is: ", action)
     
 
     action_embedding_arr =[]
@@ -215,9 +222,8 @@ def get_chat_completions(request):
         try:
             target_action = "has_action"
             action_embedding_arr = analysis_text(input_text)
-            full_plot.append(input_text)
-            update_data_to_db(_id, full_plot)
             for embedding in action_embedding_arr:
+                full_plot.append(embedding)
                 label = embedding.split(":")[0]
                 value = embedding.split(":")[1]
                 search_attribute = embedding_search_attribute(embedding_function(label))
@@ -239,6 +245,7 @@ def get_chat_completions(request):
                         rage = "Sheet1!M" + str(total_row)
                         update_google_sheet([[value]],rage)
                 messages.append({"role": "system", "content": "The infomations have been updated vào vị trí "+ rage})
+            update_data_to_db(_id, full_plot)
         except Exception as e:
             messages.append({"role": "system", "content": "Sorry, I can't update the information, please try again!"})
 
@@ -262,7 +269,7 @@ def get_chat_completions(request):
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
-            print("score: ", score)
+            #print("score: ", score)
             if(score > 0.8):
                 target_score = 1
                 index = 0
