@@ -98,7 +98,7 @@ def embedding_search_total(searchVector):
         }
         }
     }]
-    info_funtion = collection_total.aggregate(pipeline)
+    info_funtion = collection_action.aggregate(pipeline)
     
     return info_funtion
 
