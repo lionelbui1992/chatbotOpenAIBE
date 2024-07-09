@@ -208,7 +208,7 @@ def get_chat_completions(request):
     for textabc in input_text.split(" "):
         search_vector_abc = embedding_function(textabc)
         action_score = embedding_search_action(search_vector_abc)
-        print("action_score: ", action_score)
+        #print("action_score: ", action_score)
         if  action_score > 0.7:
             action_score_status = True
             break
@@ -281,6 +281,8 @@ def get_chat_completions(request):
         # prompt for message in aggregate_result, should be manage by tags
         messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
         messages.append({"role": "system", "content":input_text})
+        messages.append({"role": "user", "content": "there are "+ str(total_row) + " records found!"})
+        print("total_row: ", total_row)
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
@@ -305,6 +307,7 @@ def get_chat_completions(request):
                     index += 1
 
                 messages.append({"role": "user", "content": full_plot })
+               
     except Exception as e:
         messages.append({"role": "system", "content": "Sorry, I can't get the information, please try again!"})
 
