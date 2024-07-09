@@ -200,10 +200,12 @@ def get_chat_completions(request):
             row_index = message['row_index']
             full_plot = message['plot']
     # handle total  
+    total_row = 0
     search_total = embedding_search_total( embedding_function('total'))
     if search_total:
         for message in search_total:
             total_row = message['total']
+            
     # handle action
     action_score_status = False
     for textabc in input_text.split(" "):
