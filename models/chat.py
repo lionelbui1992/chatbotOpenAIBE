@@ -208,7 +208,7 @@ def get_chat_completions(request):
     for textabc in input_text.split(" "):
         search_vector_abc = embedding_function(textabc)
         action_score = embedding_search_action(search_vector_abc)
-        #print("action_score: ", action_score)
+        print("action_score: ", action_score)
         if  action_score > 0.7:
             action_score_status = True
             break
@@ -241,6 +241,7 @@ def get_chat_completions(request):
                 if has_attribute:
                     if column_index:
                         rage = "Sheet1!"+column_name + str(row_index)
+                        print("rage: ", rage)
                         update_google_sheet([[value]],rage)
                     else: 
 
@@ -250,9 +251,11 @@ def get_chat_completions(request):
                 else:
                     if column_index:
                         rage = "Sheet1!"+column_name + str(total_row)
+                        print("rage: ", rage)
                         update_google_sheet([[value]],rage)
                     else:
                         rage = "Sheet1!M" + str(total_row)
+                        print("rage: ", rage)
                         update_google_sheet([[value]],rage)
                 messages.append({"role": "system", "content": "The infomations have been updated vào vị trí "+ rage})
             update_data_to_db(_id, full_plot)
