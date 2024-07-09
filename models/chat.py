@@ -205,7 +205,7 @@ def get_chat_completions(request):
     if search_total:
         for message in search_total:
             total_row = message['total']
-            
+
     # handle action
     action_score_status = False
     for textabc in input_text.split(" "):
@@ -290,8 +290,9 @@ def get_chat_completions(request):
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
-            print("score: ", score)
+           
             if(score > 0.8):
+                print("score: ", score)
                 target_score = 1
                 index = 0
                 for value in message['plot']:
