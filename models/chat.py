@@ -200,7 +200,7 @@ def get_chat_completions(request):
             row_index = message['row_index']
             full_plot = message['plot']
     # handle total  
-    search_total = embedding_search_total(search_vector)
+    search_total = embedding_search_total( embedding_function('total'))
     if search_total:
         for message in search_total:
             total_row = message['total']
