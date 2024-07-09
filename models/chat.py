@@ -175,6 +175,7 @@ def get_chat_completions(request):
    
     data = request.get_json()
     messages = data.get('messages', [])
+    print("messages: ", messages)
     if not messages:
         return jsonify({"error": "No messages provided"})
     
