@@ -22,8 +22,17 @@ def set_user_settings(request):
     current_user_id = get_jwt_identity()
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
     data = request.get_json()
-    # remove token from data
-    data.pop('token', None)
+    removed_keys = [
+        'token',
+        'domain',
+        'email',
+        'name',
+        'user_id'
+    ]
+    for key in removed_keys:
+        data.pop(key, None)
+    current_user['settings'] = data
+    
     if current_user:
         collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': data}})
         return {

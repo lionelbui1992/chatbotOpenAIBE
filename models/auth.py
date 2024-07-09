@@ -97,8 +97,7 @@ def auth_register(request):
             "speechVoice": "echo",
             "speechSpeed": 1,
             "googleAccessToken": "",
-            "sheetName": "",
-            "spreadsheetID": "",
+            "googleSelectedDetails": [],
             "tag": ["server"]
         }
     }

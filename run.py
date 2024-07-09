@@ -1,6 +1,6 @@
 from datetime import timedelta
 import time
-from flask import Flask, abort, json, request, jsonify, current_app
+from flask import Flask, abort, json, redirect, request, jsonify, current_app
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -78,7 +78,7 @@ def api_v1():
 
 @app.route('/api/v1/auth', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 @app.route('/api/v1/auth/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
-def auth():
+def auth_v1():
     if request.method == 'OPTIONS':
         return '', 200
     return jsonify({'message': 'Welcome to the Auth API v1!'})
