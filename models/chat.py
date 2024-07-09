@@ -243,7 +243,9 @@ def get_chat_completions(request):
                         rage = "Sheet1!"+column_name + str(row_index)
                         update_google_sheet([[value]],rage)
                     else: 
+
                         rage = "Sheet1!M" + str(row_index)
+                        print("rage: ", rage)
                         update_google_sheet([[value]],rage)
                 else:
                     if column_index:
