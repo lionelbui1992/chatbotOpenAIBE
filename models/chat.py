@@ -274,7 +274,7 @@ def get_chat_completions(request):
     
     try:
         # run pipeline
-        aggregate_result    = embedding_search_info(search_vector,100)
+        aggregate_result    = embedding_search_info(search_vector, 100)
         header_column       = ""
         score               = 0
         full_plot           = ""
@@ -312,7 +312,7 @@ def get_chat_completions(request):
                
     except Exception as e:
         messages.append({"role": "system", "content": "Sorry, I can't get the information, please try again!"})
-
+        print(e)
     if(target_score == 0):
         messages= [
             {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
