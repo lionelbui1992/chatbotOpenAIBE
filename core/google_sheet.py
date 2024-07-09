@@ -16,6 +16,7 @@ def get_google_sheets_data(google_access_token, google_selected_details):
         # truncate data in collection
         truncate_collection(collection_total)
         truncate_collection(collection_attribute)
+        truncate_collection(collection_embedded_server)
 
         results = {}
 
