@@ -282,6 +282,7 @@ def get_chat_completions(request):
         messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
         messages.append({"role": "system", "content":input_text})
         messages.append({"role": "user", "content": "there are "+ str(total_row) + " records found!"})
+        print("total_row: ", total_row)
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
