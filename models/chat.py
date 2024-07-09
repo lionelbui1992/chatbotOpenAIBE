@@ -32,10 +32,10 @@ def analysis_text(input_text):
     )
     return completion.choices[0].message.content.split(',')
 
-def update_data_to_db(_id, plot,embedding):
+def update_data_to_db(_id, plot):
     collection.update_one(
         {"_id": _id},
-        {"$set": {"plot": plot, "plot_embedding": embedding}}
+        {"$set": {"plot": plot}}
 
     )
     return collection.find_one({"_id": _id})
@@ -188,11 +188,15 @@ def get_chat_completions(request):
     # end get the embedding
     # handle search info
     has_attribute = False
+    _id = ""
+    full_plot = []
     search_info = embedding_search_info(search_vector, 1)
     if search_info:
        has_attribute = True
        for message in search_info:
+            _id = message['_id']
             row_index = message['row_index']
+            full_plot = message['plot']
     # handle total  
     search_total = embedding_search_total(search_vector)
     if search_total:
@@ -211,6 +215,8 @@ def get_chat_completions(request):
         try:
             target_action = "has_action"
             action_embedding_arr = analysis_text(input_text)
+            full_plot.append(input_text)
+            update_data_to_db(_id, full_plot)
             for embedding in action_embedding_arr:
                 label = embedding.split(":")[0]
                 value = embedding.split(":")[1]
