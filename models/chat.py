@@ -150,12 +150,9 @@ def embedding_search_action(searchVector):
         }
     }]
     action_funtion = collection_action.aggregate(pipeline)
-    action = ""
+    action = 0;
     for message in action_funtion:
-        print("score: ", message['score'])
-        if message['score'] > 0.6:
-            action = message['title']
-            print("title: ", message['title'])
+        action = message['score']
 
     return action
 
@@ -207,17 +204,21 @@ def get_chat_completions(request):
         for message in search_total:
             total_row = message['total']
     # handle action
+    action_score_status = False
     for textabc in input_text.split(" "):
         search_vector_abc = embedding_function(textabc)
-        action = embedding_search_action(search_vector_abc)
-        print("action is: ", action)
+        action_score = embedding_search_action(search_vector_abc)
+        print("action_score: ", action_score)
+        if  action_score > 0.7:
+            action_score_status = True
+            break
     
 
     action_embedding_arr =[]
     target_action = ""
     rage = ""
 
-    if action != " ":
+    if action_score_status:
         
         try:
             target_action = "has_action"
