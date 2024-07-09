@@ -1,5 +1,5 @@
 from flask import jsonify
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity
 from db import collection_users
 
 
@@ -18,6 +18,7 @@ def auth_login(request):
     if user:
         user_id = str(user['_id'])
         access_token = create_access_token(identity=user_id)
+        refresh_token = create_refresh_token(identity=user_id)
 
         # save the token to the user
         collection_users.update_one({'_id': user_id}, {'$set': {'token': access_token}})
@@ -33,7 +34,9 @@ def auth_login(request):
                     "name": str(user['name']),
                     "settings": user['settings']
                 },
-                "token": access_token
+                "token": access_token,
+                "access_token": access_token,
+                "refresh_token": refresh_token
             }
         }
     else:
@@ -102,6 +105,7 @@ def auth_register(request):
     result = collection_users.insert_one(user)
     user_id = str(result.inserted_id)
     access_token = create_access_token(identity=user_id)
+    refresh_token = create_refresh_token(identity=user_id)
     # save the token to the user
     collection_users.update_one({'_id': user_id}, {'$set': {'token': access_token}})
 
@@ -116,6 +120,19 @@ def auth_register(request):
                 "name": email,
                 "settings": user['settings']
             },
-            "token": access_token
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token
+        }
+    }
+
+def auth_refresh_token():
+    current_user_id = get_jwt_identity()
+    access_token = create_access_token(identity=current_user_id)
+    return {
+        "status": "success",
+        "message": "Token refreshed",
+        "data": {
+            "access_token": access_token
         }
     }

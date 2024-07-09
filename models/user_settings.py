@@ -1,16 +1,16 @@
+from flask_jwt_extended import get_jwt_identity
 from db import collection_users
+from bson.objectid import ObjectId
 
 def get_user_settings(request):
-    data = request.get_json()
-    user_id = data.get('user_id')
-    user_token = data.get('user_token')
-    user = collection_users.find_one({"_id": user_id, "token": user_token})
-    if user:
+    current_user_id = get_jwt_identity()
+    current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
+    if current_user:
         return {
             "status": "success",
             "message": "User settings retrieved",
             "data": {
-                "settings": user['settings']
+                "settings": current_user['settings']
             }
         }
     else:
@@ -19,17 +19,18 @@ def get_user_settings(request):
             "message": "Invalid user ID or token"
         }
 def set_user_settings(request):
+    current_user_id = get_jwt_identity()
+    current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
     data = request.get_json()
-    user_id = data.get('user_id')
-    user_token = data.get('user_token')
-    user = collection_users.find_one({"_id": user_id, "token": user_token})
-    if user:
-        collection_users.update_one({'_id': user['_id']}, {'$set': {'settings': data['settings']}})
+    # remove token from data
+    data.pop('token', None)
+    if current_user:
+        collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': data}})
         return {
             "status": "success",
             "message": "User settings updated",
             "data": {
-                "settings": user['settings']
+                "settings": current_user['settings']
             }
         }
     else:
