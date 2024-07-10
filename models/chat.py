@@ -292,27 +292,27 @@ def get_chat_completions(request):
             # title = message['title']
             score = message['score']
            
-            if(score > 0.7):
-                print("score: ", score)
-                target_score = 1
-                index = 0
-                for value in message['plot']:
-                    if value == "":
-                        value = "N/A"
-                    # check if value is not string, convert to string
-                    if not isinstance(value, str):
-                        value = str(value)
+            #if(score > 0.7):
+            print("score: ", score)
+            target_score = 1
+            index = 0
+            for value in message['plot']:
+                if value == "":
+                    value = "N/A"
+                # check if value is not string, convert to string
+                if not isinstance(value, str):
+                    value = str(value)
 
-                    if 'index' in message['header_column']:
-                        header_column = message['header_column'][index]
-                        # debug header_column value
-                    else:
-                        header_column = "N/A"
-                    # header_column = message['header_column'][1] # index
-                    full_plot = full_plot + header_column + ":" + value + ", "
-                    index += 1
+                if 'index' in message['header_column']:
+                    header_column = message['header_column'][index]
+                    # debug header_column value
+                else:
+                    header_column = "N/A"
+                # header_column = message['header_column'][1] # index
+                full_plot = full_plot + header_column + ":" + value + ", "
+                index += 1
 
-                messages.append({"role": "user", "content": full_plot })
+            messages.append({"role": "user", "content": full_plot })
                
     except Exception as e:
         #messages.append({"role": "assistant", "content": "Sorry, I can't get the information, please try again!"})
