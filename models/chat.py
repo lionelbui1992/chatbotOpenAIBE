@@ -1,8 +1,7 @@
-from flask import json, jsonify, current_app
-from db import collection
-from db import collection_action
-from db import collection_attribute
-from db import collection_total
+from bson import ObjectId
+from flask import jsonify, current_app
+from flask_jwt_extended import get_jwt_identity
+from db import collection, collection_action, collection_attribute, collection_users
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -102,28 +101,31 @@ def embedding_search_total(searchVector):
     
     return info_funtion
 
-def embedding_search_info(searchVector,limit=100):
-    pipeline = [
-    {
+def embedding_search_info(searchVector, domain, limit=100):
+    pipeline = [{
         '$vectorSearch': {
-        'index': 'vector_index', 
-        'path': 'plot_embedding', 
-        'queryVector': searchVector, 
-        'numCandidates': 150, 
-        'limit': limit
+            'index': 'vector_index', 
+            'path': 'plot_embedding', 
+            'queryVector': searchVector, 
+            'numCandidates': 150, 
+            'limit': limit
+        }
+    }, {
+        '$match': {
+            'domain': domain
         }
     }, {
         '$project': {
-        '_id': 1, 
-        'plot': 1, 
-        'title': 1, 
-        'header_column': 1,
-        'row_index': 1,
-        'column_count': 1,
-        'domain': 1,
-        'score': {
-            '$meta': 'vectorSearchScore'
-        }
+            '_id': 1, 
+            'plot': 1, 
+            'title': 1, 
+            'header_column': 1,
+            'row_index': 1,
+            'column_count': 1,
+            'domain': 1,
+            'score': {
+                '$meta': 'vectorSearchScore'
+            }
         }
     }]
     info_funtion = collection.aggregate(pipeline)
@@ -172,11 +174,19 @@ def show_message(messages):
     return completion
 
 def get_chat_completions(request):
-   
+    current_user_id = get_jwt_identity()
+    current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
+
+    if not current_user:
+        return {"error": "Invalid user ID or token"}
+    
+    domain = current_user['domain']
+
     data = request.get_json()
-    messages = data.get('messages', [])
+    input_messages = data.get('messages', [])
+    messages = input_messages.copy()
     #print("messages: ", messages)
-    if not messages:
+    if not input_messages:
         return jsonify({"error": "No messages provided"})
     
     # get latest message content text
@@ -192,7 +202,7 @@ def get_chat_completions(request):
     has_attribute = False
     _id = ""
     full_plot = []
-    search_info = embedding_search_info(search_vector, 1)
+    search_info = embedding_search_info(search_vector, domain, 1)
     if search_info:
        has_attribute = True
        for message in search_info:

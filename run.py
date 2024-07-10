@@ -133,6 +133,7 @@ def chat_v1():
 # /api/v1/chat/completions
 @app.route('/api/v1/chat/completions', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
 @app.route('/api/v1/chat/completions/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@jwt_required()
 def chat_completions_v1():
     if request.method == 'OPTIONS':
         return '', 200
