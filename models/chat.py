@@ -284,9 +284,9 @@ def get_chat_completions(request):
         target_score       = 0 # target score to show message
 
         # prompt for message in aggregate_result, should be manage by tags
-        messages.append({"role": "system", "assistant": "Hey OAS Asisstant! show me the information bellow:"})
-        messages.append({"role": "system", "assistant":input_text})
-        messages.append({"role": "system", "assistant": "Total is "+ str(total_row) + " Developers"})
+        messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
+        messages.append({"role": "assistant", "content":input_text})
+        messages.append({"role": "assistant", "content": "Total is "+ str(total_row) + " Developers"})
         print(messages)
         for message in aggregate_result:
             # title = message['title']
@@ -315,12 +315,12 @@ def get_chat_completions(request):
                 messages.append({"role": "user", "content": full_plot })
                
     except Exception as e:
-        #messages.append({"role": "system", "content": "Sorry, I can't get the information, please try again!"})
+        #messages.append({"role": "assistant", "content": "Sorry, I can't get the information, please try again!"})
         print(e)
     if(target_score == 0):
         messages= [
-            {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
-            {"role": "system", "content": input_text },
+            {"role": "assistant", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
+            {"role": "assistant", "content": input_text },
         ]
         completion = show_message(messages)
     else:
