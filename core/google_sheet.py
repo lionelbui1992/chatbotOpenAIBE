@@ -5,7 +5,9 @@ from googleapiclient.discovery import build
 from pymongo import MongoClient, errors
 from db import collection_total, collection_attribute, collection_embedded_server
 
-def get_google_sheets_data(google_access_token, google_selected_details):
+def get_google_sheets_data(current_user, google_access_token, google_selected_details):
+    domain = current_user['domain']
+
     # truncate data in collection
     truncate_collection(collection_total)
     truncate_collection(collection_attribute)
@@ -36,12 +38,12 @@ def get_google_sheets_data(google_access_token, google_selected_details):
                 # remove the header row
                 rows.pop(0)
                 index = 0
-                import_heading_attributes(headers)
+                import_heading_attributes(domain, headers)
                 summary = {}
                 for row in rows:
                     index += 1
                     # import_total_data(row, headers, index)
-                    import_embedding_data(row, headers, index)
+                    import_embedding_data(domain, row, headers, index)
                 summary['total'] = index
                 response = current_app.openAIClient.embeddings.create(
                     input = 'total',
@@ -69,7 +71,7 @@ def truncate_collection(collection):
     except errors.OperationFailure as e:
         print(e)
 
-def import_heading_attributes(headers):
+def import_heading_attributes(domain, headers):
     try:
         for index, header in enumerate(headers):
             print('Adding Data to MongoDB...', header)
@@ -90,13 +92,14 @@ def import_heading_attributes(headers):
                 "title": input_text,
                 "plot_embedding": search_vector,
                 "type": "attribute",
-                "column_index": column_name
+                "column_index": column_name,
+                "domain": domain
             })
 
     except Exception as e:
         print(e)
 
-def import_total_data(row, headers, index):
+def import_total_data(domain, row, headers, index):
     try:
         response = current_app.openAIClient.embeddings.create(
             input = 'total',
@@ -117,7 +120,7 @@ def import_total_data(row, headers, index):
     except Exception as e:
         print(e)
 
-def import_embedding_data(row, headers, index):
+def import_embedding_data(domain, row, headers, index):
     try:
         row_string = ', ' . join(row)
         response = current_app.openAIClient.embeddings.create(
@@ -134,9 +137,9 @@ def import_embedding_data(row, headers, index):
                 "plot": row,
                 "plot_embedding": search_vector,
                 "type": "server",
-                "domain": 'domain_1',
                 "row_index": index,
-                "column_count": len(row)
+                "column_count": len(row),
+                "domain": domain
 
             }
         )

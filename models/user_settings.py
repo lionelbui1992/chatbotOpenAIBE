@@ -39,7 +39,7 @@ def set_user_settings(request):
     google_selected_details = data.get('googleSelectedDetails')
 
     if google_access_token and google_selected_details:
-        get_google_sheets_data(google_access_token, google_selected_details)
+        get_google_sheets_data(current_user, google_access_token, google_selected_details)
     
     if current_user:
         collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': data}})
@@ -65,7 +65,7 @@ def set_user_setting_google(request):
     google_selected_details = data.get('googleSelectedDetails')
     if current_user:
         try:
-            data = get_google_sheets_data(google_access_token, google_selected_details)
+            data = get_google_sheets_data(current_user, google_access_token, google_selected_details)
             current_user['settings']['googleAccessToken'] = google_access_token
             current_user['settings']['googleSelectedDetails'] = google_selected_details
             collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': current_user['settings']}})
