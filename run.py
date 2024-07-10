@@ -21,8 +21,8 @@ load_dotenv()
 app = Flask(__name__)
 app.config.from_object(Config)
 bcrypt = Bcrypt(app)
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=15)  # Access token expiration time
-app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)  # Refresh token expiration time
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400  # 1 day
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000  # 30 days
 jwt = JWTManager(app)
 
 users = []  # Temporary in-memory user store

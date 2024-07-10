@@ -127,6 +127,11 @@ def auth_register(request):
 
 def auth_refresh_token():
     current_user_id = get_jwt_identity()
+    if not current_user_id:
+        return {
+            "status": "error",
+            "message": "Invalid user ID or token"
+        }
     access_token = create_access_token(identity=current_user_id)
     return {
         "status": "success",
