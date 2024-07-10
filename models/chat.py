@@ -182,7 +182,7 @@ def get_chat_completions(request):
     # get latest message content text
     latest_message = messages[-1].get('content', "")
     input_text = latest_message[0].get('text', "")
-    print("messages: ", input_text)
+    #print("messages: ", input_text)
 
 
     # get the embedding
@@ -284,8 +284,9 @@ def get_chat_completions(request):
         target_score       = 0 # target score to show message
 
         # prompt for message in aggregate_result, should be manage by tags
-        messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
         messages.append({"role": "user", "content":input_text})
+        messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
+        
         # messages.append({"role": "user", "content": "Total is "+ str(total_row) + " Developers"})
         print(messages)
         for message in aggregate_result:
