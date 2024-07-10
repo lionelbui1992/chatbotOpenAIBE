@@ -298,7 +298,7 @@ def get_chat_completions(request):
     
     try:
         # run pipeline
-        aggregate_result    = embedding_search_info(search_vector, domain, 5)
+        aggregate_result    = embedding_search_info(search_vector, domain, 10)
         print("aggregate_result: ", aggregate_result)
         header_column       = ""
         score               = 0
@@ -306,8 +306,7 @@ def get_chat_completions(request):
         target_score       = 0 # target score to show message
 
         # prompt for message in aggregate_result, should be manage by tags
-        messages.append({"role": "user", "content":input_text})
-        messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
+        messages.append({"role": "system", "content":input_text})
         
         # messages.append({"role": "user", "content": "Total is "+ str(total_row) + " Developers"})
         #print(messages)
@@ -318,8 +317,8 @@ def get_chat_completions(request):
             print(score)
            
             #if(score > 0.7):
-            print("score: ", score)
-            print("message: ", message['title'])
+            #print("score: ", score)
+            #print("message: ", message['title'])
             target_score = 1
             index = 0
             for value in message['plot']:
@@ -338,22 +337,25 @@ def get_chat_completions(request):
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
 
-            messages.append({"role": "user", "content": full_plot })
+            messages.append({"role": "system", "content": full_plot })
                
     except Exception as e:
         #messages.append({"role": "assistant", "content": "Sorry, I can't get the information, please try again!"})
-        messages.append({"role": "assistant", "content": e.message})
+        messages.append({"role": "system", "content": e.message})
         print(e)
     if(target_score == 0):
         messages= [
             {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
-            {"role": "user", "content": input_text },
+            {"role": "system", "content": input_text },
         ]
         completion = show_message(messages)
     else:
         completion = show_message(messages)
 
-    print("messages: ", messages)
+    for m in messages:
+        print("content :",m['content'])
+
+
     completion_dict = completion.to_dict()
 
     # Serialize the dictionary to a JSON string
