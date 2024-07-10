@@ -33,13 +33,30 @@ def get_google_sheets_data(google_access_token, google_selected_details):
                 print('No data found.')
             else:
                 headers = rows[0]
-                # return
+                # remove the header row
+                rows.pop(0)
                 index = 0
                 import_heading_attributes(headers)
+                summary = {}
                 for row in rows:
                     index += 1
-                    import_total_data(row, headers, index)
+                    # import_total_data(row, headers, index)
                     import_embedding_data(row, headers, index)
+                summary['total'] = index
+                response = current_app.openAIClient.embeddings.create(
+                    input = 'total',
+                    model="text-embedding-3-small"
+                )
+                
+                search_vector = response.data[0].embedding
+                collection_embedded_server.insert_one(
+                    {
+                        "title": 'total developers '  + str(index),
+                        "plot_embedding": search_vector,
+                        "total": index
+                    }
+                )
+
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:
@@ -112,7 +129,7 @@ def import_embedding_data(row, headers, index):
         print('Adding Data to MongoDB...', row[1])
         collection_embedded_server.insert_one(
             {
-                "title": row_string,
+                "title": row[1],
                 'header_column' : headers,
                 "plot": row,
                 "plot_embedding": search_vector,
