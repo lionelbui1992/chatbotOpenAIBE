@@ -6,17 +6,19 @@ from pymongo import MongoClient, errors
 from db import collection_total, collection_attribute, collection_embedded_server
 
 def get_google_sheets_data(google_access_token, google_selected_details):
+    # truncate data in collection
+    truncate_collection(collection_total)
+    truncate_collection(collection_attribute)
+    truncate_collection(collection_embedded_server)
+    
+    if not google_access_token or not google_selected_details:
+        return jsonify({'message': 'Google access token or selected details not provided'})
     try:
         # Create Google API credentials from the access token
         creds = Credentials(token=google_access_token)
 
         # Build the Google Sheets API service
         service = build('sheets', 'v4', credentials=creds)
-
-        # truncate data in collection
-        truncate_collection(collection_total)
-        truncate_collection(collection_attribute)
-        truncate_collection(collection_embedded_server)
 
         for detail in google_selected_details:
             sheet_id = detail['sheetId']
