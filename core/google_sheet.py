@@ -93,7 +93,7 @@ def import_heading_attributes(domain, headers):
             search_vector = response.data[0].embedding
 
             collection_attribute.insert_one({
-                "title": input_text.trim(),
+                "title": input_text.strip(),
                 "plot_embedding": search_vector,
                 "type": "attribute",
                 "column_index": column_name,
@@ -116,7 +116,7 @@ def import_embedding_data(domain, row, headers, index):
         print('Importing embedding...', row[1])
         collection_embedded_server.insert_one(
             {
-                "title": row[1].trim(),
+                "title": row[1].strip(),
                 'header_column' : headers,
                 "plot": row,
                 "plot_embedding": search_vector,
