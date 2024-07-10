@@ -33,25 +33,13 @@ def get_google_sheets_data(google_access_token, google_selected_details):
                 print('No data found.')
             else:
                 headers = rows[0]
-                import_heading_attributes(rows[0])
                 # return
                 index = 0
                 for row in rows:
                     index += 1
+                    import_heading_attributes(row, headers, index)
+                    import_total_data(row, headers, index)
                     import_embedding_data(row, headers, index)
-                response = current_app.openAIClient.embeddings.create(
-                    input='total',
-                    model="text-embedding-3-small"
-                )
-                    
-                search_vector = response.data[0].embedding
-                print('Adding Data to MongoDB...', 'total')
-                collection_total.insert_one({
-                    "title": "total",
-                    "plot_embedding": search_vector,
-                    "total": index,
-                    "domain": 'domain_1'
-                })
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:
@@ -64,30 +52,48 @@ def truncate_collection(collection):
     except errors.OperationFailure as e:
         print(e)
 
-def import_heading_attributes(row):
+def import_heading_attributes(row, headers, index):
     try:
-        for i in range(len(row)):
-            print('Adding Data to MongoDB...', row[i])
-            input_text = row[i]
-            # get column letter from google sheet
-            column_name = i
+        response = current_app.openAIClient.embeddings.create(
+            input=row[1],
+            model="text-embedding-3-small"
+        )
 
+        search_vector = response.data[0].embedding
 
-            response = current_app.openAIClient.embeddings.create(
-                input=input_text,
-                model="text-embedding-3-small"
-            )
-        
-            search_vector = response.data[0].embedding
+        print('Adding Data to MongoDB...', row[1])
 
-            collection_attribute.insert_one(
-                {
-                    "title": input_text,
-                    "plot_embedding": search_vector,
-                    "type": "attribute",
-                    "column_index": column_name
-                }
-            )
+        collection_attribute.insert_one({
+            "title": row[1],
+            'header_column' : headers,
+            "plot": row,
+            "plot_embedding": search_vector,
+            "type": "server",
+            "domain": 'domain_1',
+            "row_index": index,
+            "column_count": len(row)
+        })
+
+    except Exception as e:
+        print(e)
+
+def import_total_data(row, headers, index):
+    try:
+        response = current_app.openAIClient.embeddings.create(
+            input = 'total',
+            model = "text-embedding-3-small"
+        )
+
+        search_vector = response.data[0].embedding
+
+        print('Adding Data to MongoDB...', 'total')
+
+        collection_total.insert_one({
+            "title": "total",
+            "plot_embedding": search_vector,
+            "total": index,
+            "domain": 'domain_1'
+        })
 
     except Exception as e:
         print(e)
@@ -100,7 +106,7 @@ def import_embedding_data(row, headers, index):
         )
         
         search_vector = response.data[0].embedding
-        print('Adding Data to MongoDB...', row[0])
+        print('Adding Data to MongoDB...', row[1])
         collection_embedded_server.insert_one(
             {
                 "title": row[0],
