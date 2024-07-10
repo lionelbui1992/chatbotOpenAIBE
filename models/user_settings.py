@@ -19,6 +19,7 @@ def get_user_settings(request):
             "status": "error",
             "message": "Invalid user ID or token"
         }
+
 def set_user_settings(request):
     current_user_id = get_jwt_identity()
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
@@ -49,6 +50,21 @@ def set_user_settings(request):
                 "settings": current_user['settings']
             }
         }
+    else:
+        return {
+            "status": "error",
+            "message": "Invalid user ID or token"
+        }
+
+def set_user_setting_google(request):
+    current_user_id = get_jwt_identity()
+    current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
+    data = request.get_json()
+    googleAccessToken = data.get('googleAccessToken')
+    googleSelectedDetails = data.get('googleSelectedDetails')
+    if current_user and googleAccessToken and googleSelectedDetails:
+        old_settings = current_user['settings']
+        
     else:
         return {
             "status": "error",
