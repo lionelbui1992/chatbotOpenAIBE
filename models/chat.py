@@ -323,7 +323,8 @@ def get_chat_completions(request):
            
             #if(score > 0.7):
             #print("score: ", score)
-            #print("message: ", message['title'])
+            print("message: ", message['title'])
+
             target_score = 1
             index = 0
             for value in message['plot']:
@@ -356,9 +357,6 @@ def get_chat_completions(request):
         completion = show_message(messages)
     else:
         completion = show_message(messages)
-
-    for m in messages:
-        print("content :",m['content'])
 
 
     completion_dict = completion.to_dict()
