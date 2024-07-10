@@ -347,10 +347,10 @@ def get_chat_completions(request):
     else:
         completion = show_message(messages)
 
-    for choice in completion.choices:
-        print("message: ", choice.message)
+    for m in messages:
+        print("content :",m['content'])
 
-        
+
     completion_dict = completion.to_dict()
 
     # Serialize the dictionary to a JSON string
