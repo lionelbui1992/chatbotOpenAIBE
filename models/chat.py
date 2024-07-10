@@ -307,7 +307,7 @@ def get_chat_completions(request):
         messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
         
         # messages.append({"role": "user", "content": "Total is "+ str(total_row) + " Developers"})
-        print(messages)
+        #print(messages)
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
@@ -348,7 +348,7 @@ def get_chat_completions(request):
     else:
         completion = show_message(messages)
 
-
+    print("messages: ", messages)
     completion_dict = completion.to_dict()
 
     # Serialize the dictionary to a JSON string
