@@ -359,7 +359,7 @@ def get_chat_completions(request):
     else:
         completion = show_message(messages)
 
-    print("messages: ", messages)
+    #print("messages: ", messages)
     completion_dict = completion.to_dict()
 
     # Serialize the dictionary to a JSON string
