@@ -135,6 +135,11 @@ def embedding_search_info(searchVector, domain, limit=100):
                 '$meta': 'vectorSearchScore'
             }
         }
+    },
+    {
+        '$sort': {
+            'score': -1  # Sort by score in descending order
+        }
     }]
     info_funtion = collection.aggregate(pipeline)
     
