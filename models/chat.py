@@ -352,6 +352,10 @@ def get_chat_completions(request):
         completion = show_message(messages)
 
     #print("messages: ", messages)
+
+    for m in messages:
+        print(m)
+        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     completion_dict = completion.to_dict()
 
     # Serialize the dictionary to a JSON string
