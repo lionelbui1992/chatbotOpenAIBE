@@ -312,7 +312,8 @@ def get_chat_completions(request):
 
         # prompt for message in aggregate_result, should be manage by tags
        # messages.append({"role": "system", "content": "Hey OAS Asisstant! please display the best info bellow:" })
-        messages.append({"role": "system", "content":input_text})
+        messages.append({"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" })
+        messages.append({"user": "system", "content":input_text})
         
         # messages.append({"role": "user", "content": "Total is "+ str(total_row) + " Developers"})
         #print(messages)
@@ -344,7 +345,7 @@ def get_chat_completions(request):
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
 
-            messages.append({"role": "system", "content": full_plot })
+            messages.append({"role": "user", "content": full_plot })
                
     except Exception as e:
         #messages.append({"role": "assistant", "content": "Sorry, I can't get the information, please try again!"})
