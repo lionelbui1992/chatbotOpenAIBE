@@ -52,7 +52,7 @@ def add_data_to_db(title, plot, embedding):
     )
     return collection.find_one({"title": title})
 
-def embedding_search_attribute(searchVector):
+def embedding_search_attribute(searchVector,domain):
     pipeline = [
     {
         '$vectorSearch': {
@@ -61,6 +61,10 @@ def embedding_search_attribute(searchVector):
         'queryVector': searchVector, 
         'numCandidates': 150, 
         'limit': 1
+        }
+    }, {
+        '$match': {
+            'domain': domain
         }
     }, {
         '$project': {
@@ -76,7 +80,7 @@ def embedding_search_attribute(searchVector):
     info_funtion = collection_attribute.aggregate(pipeline)
     
     return info_funtion
-def embedding_search_total(searchVector):
+def embedding_search_total(searchVector, domain):
     pipeline = [
     {
         '$vectorSearch': {
@@ -85,6 +89,10 @@ def embedding_search_total(searchVector):
         'queryVector': searchVector, 
         'numCandidates': 150, 
         'limit': 1
+        }
+    }, {
+        '$match': {
+            'domain': domain
         }
     }, {
         '$project': {
@@ -211,7 +219,7 @@ def get_chat_completions(request):
             full_plot = message['plot']
     # handle total  
     total_row = 0
-    search_total = embedding_search_total( embedding_function('total'))
+    search_total = embedding_search_total( embedding_function('total'), domain)
     if search_total:
         for message in search_total:
             total_row = message['total']
@@ -243,7 +251,7 @@ def get_chat_completions(request):
                 full_plot.append(embedding)
                 label = embedding.split(":")[0]
                 value = embedding.split(":")[1]
-                search_attribute = embedding_search_attribute(embedding_function(label))
+                search_attribute = embedding_search_attribute(embedding_function(label), domain)
                 for message in search_attribute:
                     if message['score'] > 0.8:
                         column_index = message['column_index']
@@ -287,7 +295,8 @@ def get_chat_completions(request):
     
     try:
         # run pipeline
-        aggregate_result    = embedding_search_info(search_vector, 5)
+        aggregate_result    = embedding_search_info(search_vector, domain, 5)
+        print("aggregate_result: ", aggregate_result)
         header_column       = ""
         score               = 0
         full_plot           = ""
