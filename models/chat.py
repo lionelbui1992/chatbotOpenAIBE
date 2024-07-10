@@ -1,24 +1,10 @@
 from bson import ObjectId
 from flask import jsonify, current_app
 from flask_jwt_extended import get_jwt_identity
+from core.google_sheet import update_google_sheet_data
 from db import collection, collection_action, collection_attribute, collection_users
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-
-def update_google_sheet(values, rage):
-    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-    SERVICE_ACCOUNT_FILE = 'service_account.json'
-    credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    service = build('sheets', 'v4', credentials=credentials)
-    SAMPLE_SPREADSHEET_ID = '13OKFuHbP5DwThDDlgiUcsR3D4cc3e8l-3-yn-3bG1_4'
-    SAMPLE_RANGE_NAME = rage
-    sheet = service.spreadsheets()
-    body = {
-        'values': values
-    }
-    result = sheet.values().update(
-        spreadsheetId=SAMPLE_SPREADSHEET_ID, range=SAMPLE_RANGE_NAME,
-        valueInputOption='RAW', body=body).execute()
 
 def analysis_text(input_text):
     var_messages=[
@@ -274,21 +260,21 @@ def get_chat_completions(request):
                     if column_name:
                         rage = "Sheet1!"+column_name + str(row_index)
                         print("rage 1: ", rage)
-                        update_google_sheet([[value]],rage)
+                        update_google_sheet_data([[value]],rage)
                     else: 
 
                         rage = "Sheet1!M" + str(row_index)
                         print("rage 2: ", rage)
-                        update_google_sheet([[value]],rage)
+                        update_google_sheet_data([[value]],rage)
                 else:
                     if column_name:
                         rage = "Sheet1!"+column_name + str(total_row)
                         print("rage 3: ", rage)
-                        update_google_sheet([[value]],rage)
+                        update_google_sheet_data([[value]],rage)
                     else:
                         rage = "Sheet1!M" + str(total_row)
                         print("rage 4: ", rage)
-                        update_google_sheet([[value]],rage)
+                        update_google_sheet_data([[value]],rage)
                 messages.append({"role": "system", "content": "The infomations have been updated vào vị trí "+ rage})
             update_data_to_db(_id, full_plot)
         except Exception as e:

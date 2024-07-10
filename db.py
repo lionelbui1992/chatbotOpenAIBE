@@ -17,3 +17,9 @@ collection_action = db['embedded_actions']
 collection_attribute = db['embedded_attributes']
 collection_total = db['embedded_total']
 collection_embedded_server = db['embedded_server']
+
+def truncate_collection(collection):
+    try:
+        collection.delete_many({})
+    except errors.OperationFailure as e:
+        print(e)

@@ -3,7 +3,7 @@ from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from pymongo import MongoClient, errors
-from db import collection_total, collection_attribute, collection_embedded_server
+from db import collection_total, collection_attribute, collection_embedded_server, truncate_collection
 
 def get_google_sheets_data(current_user, google_access_token, google_selected_details):
     domain = current_user['domain']
@@ -77,12 +77,6 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
         print(e)
         return jsonify({'message': 'An error occurred while retrieving data'})
 
-def truncate_collection(collection):
-    try:
-        collection.delete_many({})
-    except errors.OperationFailure as e:
-        print(e)
-
 def import_heading_attributes(domain, headers):
     try:
         for index, header in enumerate(headers):
@@ -99,7 +93,7 @@ def import_heading_attributes(domain, headers):
             search_vector = response.data[0].embedding
 
             collection_attribute.insert_one({
-                "title": input_text,
+                "title": input_text.trim(),
                 "plot_embedding": search_vector,
                 "type": "attribute",
                 "column_index": column_name,
@@ -122,7 +116,7 @@ def import_embedding_data(domain, row, headers, index):
         print('Importing embedding...', row[1])
         collection_embedded_server.insert_one(
             {
-                "title": row[1],
+                "title": row[1].trim(),
                 'header_column' : headers,
                 "plot": row,
                 "plot_embedding": search_vector,
@@ -136,3 +130,29 @@ def import_embedding_data(domain, row, headers, index):
 
     except Exception as e:
         print(e)
+
+def update_google_sheet_data(current_user, values, range_name):
+    google_access_token = current_user['settings']['googleAccessToken']
+    google_selected_details = current_user['settings']['googleSelectedDetails']
+
+    print('google_access_token', google_access_token)
+    print('google_selected_details', google_selected_details)
+
+    if not google_access_token or not google_selected_details:
+        return jsonify({'message': 'Google access token or selected details not provided'})
+    try:
+        # Create Google API credentials from the access token
+        credentials = Credentials(token=google_access_token)
+        service = build('sheets', 'v4', credentials=credentials)
+        for detail in google_selected_details:
+            # detail: id, sheetId, sheetName, title
+            sheet_id = detail['sheetId']
+            result = service.spreadsheets().values().update(
+                spreadsheetId=sheet_id, range=range_name,
+                valueInputOption='RAW', body={'values': values}).execute()
+            print('{0} cells updated.'.format(result.get('updatedCells')))
+
+        return jsonify({'message': 'Data retrieved and printed successfully'})
+    except Exception as e:
+        print(e)
+        return jsonify({'message': 'An error occurred while retrieving data'})
