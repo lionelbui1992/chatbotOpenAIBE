@@ -178,6 +178,7 @@ def user_settings_v1():
 # /api/v1/user/google
 @app.route('/api/v1/user/google', methods=['PUT', 'OPTIONS'])
 @app.route('/api/v1/user/google/', methods=['PUT', 'OPTIONS'])
+@jwt_required()
 def user_settings_google_v1():
     if request.method == 'OPTIONS':
         return '', 200

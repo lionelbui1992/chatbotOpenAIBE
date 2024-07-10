@@ -58,13 +58,28 @@ def set_user_settings(request):
 
 def set_user_setting_google(request):
     current_user_id = get_jwt_identity()
+    print(current_user_id)
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
     data = request.get_json()
     googleAccessToken = data.get('googleAccessToken')
     googleSelectedDetails = data.get('googleSelectedDetails')
     if current_user and googleAccessToken and googleSelectedDetails:
-        old_settings = current_user['settings']
-        
+        # only migrate if old data is different from new data
+        if current_user['settings'].get('googleAccessToken') != googleAccessToken or current_user['settings'].get('googleSelectedDetails') != googleSelectedDetails:
+            try:
+                data = get_google_sheets_data(googleAccessToken, googleSelectedDetails)
+                current_user['settings']['googleAccessToken'] = googleAccessToken
+                current_user['settings']['googleSelectedDetails'] = googleSelectedDetails
+                collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': current_user['settings']}})
+                return {
+                    "status": "success",
+                    "message": "Google settings updated"
+                }
+            except Exception as e:
+                return {
+                    "status": "error",
+                    "message": "An error occurred while retrieving data" + str(e)
+                }
     else:
         return {
             "status": "error",
