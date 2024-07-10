@@ -294,6 +294,7 @@ def get_chat_completions(request):
            
             #if(score > 0.7):
             print("score: ", score)
+            print("message: ", message['title'])
             target_score = 1
             index = 0
             for value in message['plot']:
