@@ -329,7 +329,7 @@ def get_chat_completions(request):
     except Exception as e:
         #messages.append({"role": "assistant", "content": "Sorry, I can't get the information, please try again!"})
         messages.append({"role": "assistant", "content": e.message})
-        #print(e)
+        print(e)
     if(target_score == 0):
         messages= [
             {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
