@@ -35,9 +35,9 @@ def get_google_sheets_data(google_access_token, google_selected_details):
                 headers = rows[0]
                 # return
                 index = 0
+                import_heading_attributes(headers)
                 for row in rows:
                     index += 1
-                    import_heading_attributes(row, headers, index)
                     import_total_data(row, headers, index)
                     import_embedding_data(row, headers, index)
 
@@ -52,27 +52,29 @@ def truncate_collection(collection):
     except errors.OperationFailure as e:
         print(e)
 
-def import_heading_attributes(row, headers, index):
+def import_heading_attributes(headers):
     try:
-        response = current_app.openAIClient.embeddings.create(
-            input=row[1],
-            model="text-embedding-3-small"
-        )
+        for index, header in enumerate(headers):
+            print('Adding Data to MongoDB...', header)
+            input_text = header
+            column_name = index
+            
 
-        search_vector = response.data[0].embedding
+            response = current_app.openAIClient.embeddings.create(
+                input=header,
+                model="text-embedding-3-small"
+            )
 
-        print('Adding Data to MongoDB...', row[1])
+            search_vector = response.data[0].embedding
 
-        collection_attribute.insert_one({
-            "title": row[1],
-            'header_column' : headers,
-            "plot": row,
-            "plot_embedding": search_vector,
-            "type": "server",
-            "domain": 'domain_1',
-            "row_index": index,
-            "column_count": len(row)
-        })
+            print('Adding Data to MongoDB...', header)
+
+            collection_attribute.insert_one({
+                "title": input_text,
+                "plot_embedding": search_vector,
+                "type": "attribute",
+                "column_index": column_name
+            })
 
     except Exception as e:
         print(e)
@@ -100,8 +102,9 @@ def import_total_data(row, headers, index):
 
 def import_embedding_data(row, headers, index):
     try:
+        row_string = ', ' . join(row)
         response = current_app.openAIClient.embeddings.create(
-            input=row[1],
+            input=row_string,
             model="text-embedding-3-small"
         )
         
@@ -109,7 +112,7 @@ def import_embedding_data(row, headers, index):
         print('Adding Data to MongoDB...', row[1])
         collection_embedded_server.insert_one(
             {
-                "title": row[0],
+                "title": row_string,
                 'header_column' : headers,
                 "plot": row,
                 "plot_embedding": search_vector,
