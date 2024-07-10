@@ -52,7 +52,7 @@ def add_data_to_db(title, plot, embedding):
     )
     return collection.find_one({"title": title})
 
-def embedding_search_attribute(searchVector,domain):
+def embedding_search_attribute(searchVector, domain):
     pipeline = [
     {
         '$vectorSearch': {
@@ -192,13 +192,16 @@ def get_chat_completions(request):
 
     data = request.get_json()
     input_messages = data.get('messages', [])
-    messages = input_messages.copy()
-    #print("messages: ", messages)
+    messages = []
+    # message only get latest item from input_messages
+    # messages.append(input_messages[-1].copy())
+
+    # print("messages: ", messages)
     if not input_messages:
         return jsonify({"error": "No messages provided"})
     
     # get latest message content text
-    latest_message = messages[-1].get('content', "")
+    latest_message = input_messages[-1].get('content', "")
     input_text = latest_message[0].get('text', "")
     #print("messages: ", input_text)
 
@@ -311,6 +314,8 @@ def get_chat_completions(request):
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
+
+            print(score)
            
             #if(score > 0.7):
             print("score: ", score)
