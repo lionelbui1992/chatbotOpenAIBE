@@ -286,13 +286,13 @@ def get_chat_completions(request):
         # prompt for message in aggregate_result, should be manage by tags
         messages.append({"role": "system", "content": "Hey OAS Asisstant! show me the information bellow:"})
         messages.append({"role": "user", "content":input_text})
-        messages.append({"role": "user", "content": "Total is "+ str(total_row) + " Developers"})
+        # messages.append({"role": "user", "content": "Total is "+ str(total_row) + " Developers"})
         print(messages)
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
            
-            if(score > 0.8):
+            if(score > 0.7):
                 print("score: ", score)
                 target_score = 1
                 index = 0

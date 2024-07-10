@@ -39,25 +39,37 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
                 rows.pop(0)
                 index = 0
                 import_heading_attributes(domain, headers)
-                summary = {}
+
                 for row in rows:
                     index += 1
                     # import_total_data(row, headers, index)
                     import_embedding_data(domain, row, headers, index)
-                summary['total'] = index
-                response = current_app.openAIClient.embeddings.create(
-                    input = 'total',
-                    model="text-embedding-3-small"
-                )
-                
-                search_vector = response.data[0].embedding
-                collection_embedded_server.insert_one(
-                    {
-                        "title": 'total developers '  + str(index),
-                        "plot_embedding": search_vector,
-                        "total": index
-                    }
-                )
+                total_strings = ['total', 'count', 'sum', 'how many']
+                for total_string in total_strings:
+
+                    response = current_app.openAIClient.embeddings.create(
+                        input = total_string,
+                        model="text-embedding-3-small"
+                    )
+                    
+                    search_vector = response.data[0].embedding
+
+                    print('>>>>>>>> Adding Data to MongoDB...', 'total')
+                    collection_embedded_server.insert_one(
+                        {
+                            "title": 'total',
+                            'header_column' : headers,
+                            "plot": [
+                                'total ' + str(len(rows)),
+
+                            ],
+                            "plot_embedding": search_vector,
+                            "type": "server",
+                            "row_index": 0,
+                            "column_count": 0,
+                            "domain": domain
+                        }
+                    )
 
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
@@ -74,7 +86,7 @@ def truncate_collection(collection):
 def import_heading_attributes(domain, headers):
     try:
         for index, header in enumerate(headers):
-            print('Adding Data to MongoDB...', header)
+            print('Importing heading...', header)
             input_text = header
             column_name = index
             
@@ -85,8 +97,6 @@ def import_heading_attributes(domain, headers):
             )
 
             search_vector = response.data[0].embedding
-
-            print('Adding Data to MongoDB...', header)
 
             collection_attribute.insert_one({
                 "title": input_text,
@@ -99,26 +109,6 @@ def import_heading_attributes(domain, headers):
     except Exception as e:
         print(e)
 
-def import_total_data(domain, row, headers, index):
-    try:
-        response = current_app.openAIClient.embeddings.create(
-            input = 'total',
-            model = "text-embedding-3-small"
-        )
-
-        search_vector = response.data[0].embedding
-
-        print('Adding Data to MongoDB...', 'total')
-
-        collection_total.insert_one({
-            "title": "total",
-            "plot_embedding": search_vector,
-            "total": index,
-            "domain": 'domain_1'
-        })
-
-    except Exception as e:
-        print(e)
 
 def import_embedding_data(domain, row, headers, index):
     try:
@@ -129,7 +119,7 @@ def import_embedding_data(domain, row, headers, index):
         )
         
         search_vector = response.data[0].embedding
-        print('Adding Data to MongoDB...', row[1])
+        print('Importing embedding...', row[1])
         collection_embedded_server.insert_one(
             {
                 "title": row[1],
