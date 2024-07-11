@@ -171,7 +171,7 @@ def show_message(messages):
         model=current_app.config['OPENAI_MODEL'],
         messages= messages
     )
-    print("total tockens", completion.choices[0].message.total_tokens)
+    #print("total tockens", completion.choices[0].message.total_tokens)
     return completion
 
 def get_chat_completions(request):
