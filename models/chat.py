@@ -171,6 +171,7 @@ def show_message(messages):
         model=current_app.config['OPENAI_MODEL'],
         messages= messages
     )
+    print("total tockens", completion.choices[0].message.total_tokens)
     return completion
 
 def get_chat_completions(request):
@@ -297,8 +298,7 @@ def get_chat_completions(request):
         full_plot           = ""
         target_score       = 0 # target score to show message
 
-        messages.append({"role": "user", "content":input_text})
-
+      
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
@@ -328,10 +328,11 @@ def get_chat_completions(request):
     except Exception as e:
         messages.append({"role": "system", "content": e.message})
         print(e)
+
+    messages.append({"role": "user", "content":input_text})
     if(target_score == 0):
         messages= [
-            {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" },
-            {"role": "user", "content": input_text },
+            {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" }
         ]
         completion = show_message(messages)
     else:
