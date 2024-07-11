@@ -28,7 +28,7 @@ jwt = JWTManager(app)
 users = []  # Temporary in-memory user store
 
 # Configure CORS to allow all domains for all routes and methods
-CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "PUT", "POST", "DELETE", "OPTIONS"], "allow_headers": ["Authorization", "Content-Type"]}})
+CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "PUT", "POST", "DELETE", "OPTIONS"], "allow_headers": ["Authorization", "Content-Type"]}}, supports_credentials=True)
 
 # Secret key for session management
 # app.secret_key = os.getenv('SECRET_KEY')
@@ -92,7 +92,10 @@ def login():
         return '', 200
     auth_data = auth_login(request)
     if auth_data['status'] == 'success':
-        return jsonify(auth_data)
+        response = jsonify(auth_data)
+        response.set_cookie('token', auth_data['data']['access_token'], httponly=True, secure=True, samesite='Strict')
+        response.set_cookie('refreshToken', auth_data['data']['refresh_token'], httponly=True, secure=True, samesite='Strict')
+        return response
     else:
         return jsonify(auth_data), 401
 
@@ -104,22 +107,49 @@ def register():
         return '', 200
     auth_data = auth_register(request)
     if auth_data['status'] == 'success':
-        return jsonify(auth_data)
+        response = jsonify(auth_data)
+        response.set_cookie('token', auth_data['data']['access_token'], httponly=True, secure=True, samesite='Strict')
+        response.set_cookie('refreshToken', auth_data['data']['refresh_token'], httponly=True, secure=True, samesite='Strict')
+        return response
     else:
         return jsonify(auth_data), 401
 
 # /api/v1/auth/refreshtoken
 @app.route('/api/v1/auth/refreshtoken', methods=['POST', 'OPTIONS'])
 @app.route('/api/v1/auth/refreshtoken/', methods=['POST', 'OPTIONS'])
-@jwt_required(refresh=True)
 def refreshtoken():
+    print(request.cookies.get('refreshToken'))
     if request.method == 'OPTIONS':
         return '', 200
-    data = auth_refresh_token()
+    data = auth_refresh_token(request)
     if data['status'] == 'success':
-        return jsonify(data)
+        response = jsonify(data)
+        response.set_cookie('token', data['data']['access_token'], httponly=True, secure=True, samesite='Strict')
+        response.set_cookie('refreshToken', data['data']['refresh_token'], httponly=True, secure=True, samesite='Strict')
+        return response
     else:
         return jsonify(data), 401
+    
+# /api/v1/auth/status
+@app.route('/api/v1/auth/status', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/auth/status/', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def auth_status():
+    if request.method == 'OPTIONS':
+        return '', 200
+    return jsonify({'status': 'success', 'message': 'Token is valid'})
+
+# /api/v1/auth/logout
+@app.route('/api/v1/auth/logout', methods=['GET', 'OPTIONS'])
+@app.route('/api/v1/auth/logout/', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def logout():
+    if request.method == 'OPTIONS':
+        return '', 200
+    response = jsonify({'status': 'success', 'message': 'Logged out successfully'})
+    response.delete_cookie('token')
+    response.delete_cookie('refreshToken')
+    return response
 
 
 # /api/v1/chat

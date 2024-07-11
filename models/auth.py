@@ -119,24 +119,32 @@ def auth_register(request):
                 "name": email,
                 "settings": user['settings']
             },
-            "token": access_token,
             "access_token": access_token,
             "refresh_token": refresh_token
         }
     }
 
-def auth_refresh_token():
-    current_user_id = get_jwt_identity()
+def auth_refresh_token(request):
+    refresh_token = request.cookies.get('refreshToken')
+    print(refresh_token)
+    if not refresh_token:
+        return {
+            "status": "error",
+            "message": "Missing refresh token"
+        }
+    current_user_id = get_jwt_identity(refresh_token)
     if not current_user_id:
         return {
             "status": "error",
             "message": "Invalid user ID or token"
         }
     access_token = create_access_token(identity=current_user_id)
+    refresh_token = create_refresh_token(identity=current_user_id)
     return {
         "status": "success",
         "message": "Token refreshed",
         "data": {
-            "access_token": access_token
+            "access_token": access_token,
+            "refresh_token": refresh_token
         }
     }
