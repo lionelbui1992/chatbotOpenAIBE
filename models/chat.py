@@ -261,21 +261,21 @@ def get_chat_completions(request):
                     if column_name:
                         rage = "Sheet1!"+column_name + str(row_index)
                         print("rage 1: ", rage)
-                        update_google_sheet_data([[value]],rage)
+                        update_google_sheet_data(current_user, [[value]] ,rage)
                     else: 
 
                         rage = "Sheet1!M" + str(row_index)
                         print("rage 2: ", rage)
-                        update_google_sheet_data([[value]],rage)
+                        update_google_sheet_data(current_user, [[value]] ,rage)
                 else:
                     if column_name:
                         rage = "Sheet1!"+column_name + str(total_row)
                         print("rage 3: ", rage)
-                        update_google_sheet_data([[value]],rage)
+                        update_google_sheet_data(current_user, [[value]] ,rage)
                     else:
                         rage = "Sheet1!M" + str(total_row)
                         print("rage 4: ", rage)
-                        update_google_sheet_data([[value]],rage)
+                        update_google_sheet_data(current_user, [[value]] ,rage)
                 messages.append({"role": "system", "content": "The infomations have been updated vào vị trí "+ rage})
             update_data_to_db(_id, full_plot)
         except Exception as e:
