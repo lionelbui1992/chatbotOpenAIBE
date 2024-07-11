@@ -2,7 +2,7 @@ from bson import ObjectId
 from flask import jsonify, current_app
 from flask_jwt_extended import get_jwt_identity
 from core.google_sheet import update_google_sheet_data
-from db import collection, collection_action, collection_attribute, collection_users
+from db import collection_embedded_server, collection_action, collection_attribute, collection_users
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -18,15 +18,15 @@ def analysis_text(input_text):
     return completion.choices[0].message.content.split(',')
 
 def update_data_to_db(_id, plot):
-    collection.update_one(
+    collection_embedded_server.update_one(
         {"_id": _id},
         {"$set": {"plot": plot}}
 
     )
-    return collection.find_one({"_id": _id})
+    return collection_embedded_server.find_one({"_id": _id})
 
 def add_data_to_db(title, plot, embedding):
-    collection.insert_one(
+    collection_embedded_server.insert_one(
         {
             "title": title,
             "plot": plot,
@@ -36,7 +36,7 @@ def add_data_to_db(title, plot, embedding):
             "column_count": len(plot)
         }
     )
-    return collection.find_one({"title": title})
+    return collection_embedded_server.find_one({"title": title})
 
 def embedding_search_attribute(searchVector, domain):
     pipeline = [
@@ -128,7 +128,7 @@ def embedding_search_info(searchVector, domain, limit=100):
             'score': -1
         }
     }]
-    info_funtion = collection.aggregate(pipeline)
+    info_funtion = collection_embedded_server.aggregate(pipeline)
     
     return info_funtion
 

@@ -8,7 +8,6 @@ class Config:
     DATABASE_TYPE = 'mongodb'
     DB_NAME = os.environ.get('DB_NAME', 'sample_mflix')
     MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://lionelbui:pEciuiTKR28LKOMs@cluster0.hm7buca.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
-    MONGO_COLLECTION = os.environ.get('MONGO_COLLECTION', 'sample_mflix')
     MYSQL_USER = os.environ.get('MYSQL_USER')
     MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD')
     MYSQL_DB = os.environ.get('MYSQL_DB')
