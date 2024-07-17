@@ -313,8 +313,10 @@ def get_chat_completions(request):
                 # check if value is not string, convert to string
                 if not isinstance(value, str):
                     value = str(value)
-
-                if message['header_column'][index]:
+                
+                if index < len(message['header_column']):
+                    print(index)
+                    print(len(message['header_column']))
                     header_column = message['header_column'][index] # index
                 else:
                     header_column = ""
