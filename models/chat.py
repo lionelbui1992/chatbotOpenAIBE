@@ -331,9 +331,6 @@ def get_chat_completions(request):
 
     messages.append({"role": "user", "content":input_text})
     if(target_score == 0):
-        messages= [
-            {"role": "system", "content": "Hey OAS Asisstant! Write nature langage for bellow text:" }
-        ]
         completion = show_message(messages)
     else:
         completion = show_message(messages)
