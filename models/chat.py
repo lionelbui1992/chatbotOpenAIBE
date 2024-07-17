@@ -330,8 +330,10 @@ def get_chat_completions(request):
         print(e)
 
     messages.append({"role": "user", "content":input_text})
+    
     if(target_score == 0):
         completion = show_message(messages)
+        messages.append({"role": "user", "content":"WITH ABOVE INFORMATIONS ONLY")
     else:
         completion = show_message(messages)
 
