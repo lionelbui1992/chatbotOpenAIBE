@@ -291,7 +291,7 @@ def get_chat_completions(request):
     
     try:
         # run pipeline
-        aggregate_result    = embedding_search_info(search_vector, domain, 10)
+        aggregate_result    = embedding_search_info(search_vector, domain, 5)
         print("aggregate_result: ", aggregate_result)
         header_column       = ""
         score               = 0
