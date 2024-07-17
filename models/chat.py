@@ -319,7 +319,8 @@ def get_chat_completions(request):
                     # debug header_column value
                 else:
                     header_column = ""
-                # header_column = message['header_column'][1] # index
+                    
+                header_column = message['header_column'][1] # index
 
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
