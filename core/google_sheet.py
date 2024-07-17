@@ -9,9 +9,8 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
     domain = current_user['domain']
 
     # truncate data in collection
-    truncate_collection(collection_total)
-    truncate_collection(collection_attribute)
-    truncate_collection(collection_embedded_server)
+    truncate_collection(collection_attribute, domain)
+    truncate_collection(collection_embedded_server, domain)
     
     if not google_access_token or not google_selected_details:
         return jsonify({'message': 'Google access token or selected details not provided'})
@@ -78,9 +77,22 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
         return jsonify({'message': 'An error occurred while retrieving data'})
 
 def import_heading_attributes(domain, headers):
+    # skip this attributes key
+    exclude_attributes = [
+        'ID',
+        'STT',
+        'So thu tu',
+        'Số thứ tự',
+        'no',
+        'no.',
+        '#',
+    ]
     try:
         for index, header in enumerate(headers):
-            print('Importing heading...', header)
+            if header in exclude_attributes:
+                print('<<<<<<<<< Skipping heading...', header)
+                continue
+            print('<<<<<<<<< Importing heading...', header)
             input_text = header
             column_name = index
             
