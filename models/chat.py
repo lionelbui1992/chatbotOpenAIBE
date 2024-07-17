@@ -323,7 +323,7 @@ def get_chat_completions(request):
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
 
-            messages.append({"role": "system", "content": full_plot })
+            messages.append({"role": "assistant", "content": full_plot })
                
     except Exception as e:
         messages.append({"role": "system", "content": e.message})
