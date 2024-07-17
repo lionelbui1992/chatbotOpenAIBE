@@ -16,8 +16,8 @@ collection_attribute = db['embedded_attributes']
 collection_total = db['embedded_total']
 collection_embedded_server = db['embedded_server']
 
-def truncate_collection(collection):
+def truncate_collection(collection, domain: str):
     try:
-        collection.delete_many({})
+        collection.delete_many({'domain': domain})
     except errors.OperationFailure as e:
         print(e)
