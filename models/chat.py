@@ -314,13 +314,12 @@ def get_chat_completions(request):
                 if not isinstance(value, str):
                     value = str(value)
 
-                if index in message['header_column']:
-                    header_column = message['header_column'][index]
-                    # debug header_column value
+                if message['header_column'][index]:
+                    header_column = message['header_column'][index] # index
                 else:
                     header_column = ""
                     
-                header_column = message['header_column'][1] # index
+                
 
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
