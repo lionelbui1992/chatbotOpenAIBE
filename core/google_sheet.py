@@ -147,9 +147,6 @@ def update_google_sheet_data(current_user, values, range_name):
     google_access_token = current_user['settings']['googleAccessToken']
     google_selected_details = current_user['settings']['googleSelectedDetails']
 
-    print('google_access_token', google_access_token)
-    print('google_selected_details', google_selected_details)
-
     if not google_access_token or not google_selected_details:
         return jsonify({'message': 'Google access token or selected details not provided'})
     try:
@@ -163,6 +160,84 @@ def update_google_sheet_data(current_user, values, range_name):
                 spreadsheetId=sheet_id, range=range_name,
                 valueInputOption='RAW', body={'values': values}).execute()
             print('{0} cells updated.'.format(result.get('updatedCells')))
+
+        return jsonify({'message': 'Data retrieved and printed successfully'})
+    except Exception as e:
+        print(e)
+        return jsonify({'message': 'An error occurred while retrieving data'})
+
+def append_google_sheet_row(current_user, new_item):
+    # new_item :{
+    #     "ID": "87",
+    #     "Projects": "Teenskey",
+    #     "Need to upgrade": "",
+    #     "Set Index , Follow": "",
+    #     "Auto Update": "OFF",
+    #     "WP Version": "6.0.1",
+    #     "Password": "lollimedia",
+    #     "Login Email": "cyrus@lolli.com.hk",
+    #     "Site Url": "https://teenskey.org/",
+    #     "Comment": "for teenskey.org/cmsadmin, pw is Teenskey123#@!",
+    #     "Polylang": "TRUE"
+    # }
+    google_access_token = current_user['settings']['googleAccessToken']
+    google_selected_details = current_user['settings']['googleSelectedDetails']
+
+    if not google_access_token or not google_selected_details:
+        return jsonify({'message': 'Google access token or selected details not provided'})
+    try:
+        # Create Google API credentials from the access token
+        credentials = Credentials(token=google_access_token)
+        service = build('sheets', 'v4', credentials=credentials)
+        for detail in google_selected_details:
+            sheet_id = detail['sheetId']
+            sheet_name = detail['title']
+            range_name = f'{sheet_name}!A1:AE999'
+            result = service.spreadsheets().values().get(spreadsheetId=sheet_id, range=range_name).execute()
+            rows = result.get('values', [])
+            if not rows:
+                print('No data found.')
+            else:
+                # append new_item to the last row
+                rows.append(list(new_item.values()))
+                result = service.spreadsheets().values().update(
+                    spreadsheetId=sheet_id, range=range_name,
+                    valueInputOption='RAW', body={'values': rows}).execute()
+                print('{0} cells updated.'.format(result.get('updatedCells')))
+
+
+        return jsonify({'message': 'Data retrieved and printed successfully'})
+    except Exception as e:
+        print(e)
+        return jsonify({'message': 'An error occurred while retrieving data'})
+
+def append_google_sheet_column(current_user, column_name):
+    google_access_token = current_user['settings']['googleAccessToken']
+    google_selected_details = current_user['settings']['googleSelectedDetails']
+
+    if not google_access_token or not google_selected_details:
+        return jsonify({'message': 'Google access token or selected details not provided'})
+    try:
+        # Create Google API credentials from the access token
+        credentials = Credentials(token=google_access_token)
+        service = build('sheets', 'v4', credentials=credentials)
+        for detail in google_selected_details:
+            sheet_id = detail['sheetId']
+            sheet_name = detail['title']
+            range_name = f'{sheet_name}!A1:AE999'
+            result = service.spreadsheets().values().get(spreadsheetId=sheet_id, range=range_name).execute()
+            rows = result.get('values', [])
+            if not rows:
+                print('No data found.')
+            else:
+                # append new column to the last column
+                rows[0].append(column_name)
+                # for row in rows:
+                #     row.append('')
+                result = service.spreadsheets().values().update(
+                    spreadsheetId=sheet_id, range=range_name,
+                    valueInputOption='RAW', body={'values': rows}).execute()
+                print('{0} cells updated.'.format(result.get('updatedCells')))
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:

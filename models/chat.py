@@ -1,7 +1,7 @@
 from bson import ObjectId
 from flask import jsonify, current_app
 from flask_jwt_extended import get_jwt_identity
-from core.google_sheet import update_google_sheet_data
+from core.google_sheet import append_google_sheet_column, append_google_sheet_row, update_google_sheet_data
 from db import collection_embedded_server, collection_action, collection_attribute, collection_users
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -34,7 +34,7 @@ def get_analysis_input_action(input_text: str, domain: str):
     
     all_title = ', '.join([f'"{title}"' for title in avaible_title])
     print('||||||||||||||||||||All title: ', all_title)
-    print('||||||||||||||||||||All title',)
+    # print('||||||||||||||||||||All title',)
 
     # get random 3 data from collection_embedded_server
     aggregate_result = collection_embedded_server.aggregate([
@@ -64,6 +64,7 @@ def get_analysis_input_action(input_text: str, domain: str):
     for message in aggregate_result:
         # message type is dict
         example_data.append(message)
+    all_example_data = ', '.join([json.dumps(data) for data in example_data])
 
     var_messages=[
         {
@@ -117,7 +118,7 @@ Your response should follow this JSON structure:
     "column_title": "",
     "old_value": "XXX",
     "new_value": "YYY",
-    "new_items": {example_data}
+    "new_items": {all_example_data}
 }}
 ```
 **Guidelines**:
@@ -142,7 +143,7 @@ Here are some example input texts to illustrate:
         messages= var_messages
     )
     message = completion.choices[0].message.content
-    print('Action analysis prompt: ', var_messages)
+    # print('Action analysis prompt: ', var_messages)
     print('Action analysis: ', message)
     return message
 
@@ -366,7 +367,7 @@ def get_chat_completions(request):
             _id = message['_id']
             row_index = message['row_index']
             full_plot = message['plot']
-            print('==================== search info', message)
+            # print('==================== search info', message)
     # handle total
 
     print('>>>>>>>>>>>> search vector for "total" in collection_action: ')
@@ -380,16 +381,16 @@ def get_chat_completions(request):
 
     # handle action
     print('==================== HANDLE ACTIONS')
-    print('>>>>>>>>>>>>>>>>>>>> search vector for "action" in collection_action: ')
+    # print('>>>>>>>>>>>>>>>>>>>> search vector for "action" in collection_action: ')
     action_score_status = False
     for input_single_word in input_text.split(" "):
         search_vector_i_s_w = embedding_function(input_single_word)
         action_score = embedding_search_action(search_vector_i_s_w)
-        print("action_score: ", action_score, "search text: ", input_single_word)
+        # print("action_score: ", action_score, "search text: ", input_single_word)
         if  action_score > 0.7:
             action_score_status = True
             break
-    print('>>>>>>>>>>>>>>>>>>>> end search vector for "action" in collection_action: ')
+    # print('>>>>>>>>>>>>>>>>>>>> end search vector for "action" in collection_action: ')
     
 
     action_info =[]
@@ -405,6 +406,12 @@ def get_chat_completions(request):
             action_info = get_analysis_input_action(input_text, domain)
 
             # Convert action_info string to dictionary
+
+            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            # print(action_info)
             action_info_dict = json.loads(action_info)
 
             # Get the action, title, old_value, and new_value from the dictionary
@@ -416,16 +423,33 @@ def get_chat_completions(request):
                 old_value = action_info_dict.get('old_value', '')
                 new_value = action_info_dict.get('new_value', '')
                 new_items = action_info_dict.get('new_items', [])
-                column_index = 0
+                column_index = -1
+                row_index = -1
                 if column_title != 'None':
                     # get column_index from collection_attribute
                     search_attribute = embedding_search_attribute(column_title, domain)
                     # print('search_attribute: ', search_attribute)
                     for message in search_attribute:
                         print('>>>>> found column: ', message.get('column_index', 0))
+                        column_index = message.get('column_index', -1)
                         # if message['score'] > 0.8:
                         #     column_index = message['column_index']
                         #     column_name = chr(65 + column_index)
+                    if action == 'Add row':
+                        # update google sheet data
+                        print('>>>>>>>>>>>>>>>>>>>> "Add row"')
+                        # get latest row_index
+                        if new_items != []:
+                            for new_item in new_items:
+                                # new_item will be {'ID': '14', 'Projects': 'Citic', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'Citicpacific123#@!', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://www.citicpacific.com/en/', 'Comment': '', 'Polylang': 'TRUE'}, {}, {'ID': '30', 'Projects': 'GIBF', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': '', 'WP Version': '', 'Password': '5PYSO9tONhpfztggNyry(%uM', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://gibf-bio.com', 'Comment': 'There is a pending change of your email to cyrus@lolli.com.hk', 'Polylang': 'FALSE'}
+                                print(append_google_sheet_row(current_user, new_item))
+                    elif action == 'Add column':
+                        # update google sheet data
+                        print('>>>>>>>>>>>>>>>>>>>> "Add column"')
+                        append_google_sheet_column(current_user, column_title)
+                    else:
+                        print('>>>>>>>>>>>>>>>>>>>> "Modify"')
+                        
 
 
 
