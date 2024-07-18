@@ -2,6 +2,7 @@ from flask import json, jsonify, current_app
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from numpy import number
 from pymongo import MongoClient, errors
 from db import collection_attribute, collection_embedded_server, truncate_collection
 
@@ -143,7 +144,9 @@ def import_embedding_data(domain, row, headers, index):
     except Exception as e:
         print(e)
 
-def update_google_sheet_data(current_user, values, range_name):
+def update_google_sheet_data(current_user, values: str, column_index: number, row_index: number):
+
+    print(values)
     google_access_token = current_user['settings']['googleAccessToken']
     google_selected_details = current_user['settings']['googleSelectedDetails']
 
@@ -154,12 +157,23 @@ def update_google_sheet_data(current_user, values, range_name):
         credentials = Credentials(token=google_access_token)
         service = build('sheets', 'v4', credentials=credentials)
         for detail in google_selected_details:
-            # detail: id, sheetId, sheetName, title
             sheet_id = detail['sheetId']
-            result = service.spreadsheets().values().update(
-                spreadsheetId=sheet_id, range=range_name,
-                valueInputOption='RAW', body={'values': values}).execute()
-            print('{0} cells updated.'.format(result.get('updatedCells')))
+            sheet_name = detail['title']
+            range_name = f'{sheet_name}!A1:AE999'
+            result = service.spreadsheets().values().get(spreadsheetId=sheet_id, range=range_name).execute()
+            rows = result.get('values', [])
+            if not rows:
+                print('No data found.')
+            else:
+                # update the value of the cell
+                old_value = rows[row_index][column_index]
+                print(old_value)
+                rows[row_index][column_index] = values
+                result = service.spreadsheets().values().update(
+                    spreadsheetId=sheet_id, range=range_name,
+                    valueInputOption='RAW', body={'values': rows}).execute()
+                print(f'Value updated from {old_value} to {values}.')
+        
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:

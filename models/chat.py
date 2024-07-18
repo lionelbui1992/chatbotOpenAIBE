@@ -407,11 +407,15 @@ def get_chat_completions(request):
 
             # Convert action_info string to dictionary
 
-            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            # print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            # print(action_info)
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print(action_info)
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
             action_info_dict = json.loads(action_info)
 
             # Get the action, title, old_value, and new_value from the dictionary
@@ -435,23 +439,44 @@ def get_chat_completions(request):
                         # if message['score'] > 0.8:
                         #     column_index = message['column_index']
                         #     column_name = chr(65 + column_index)
-                    if action == 'Add row':
-                        # update google sheet data
-                        print('>>>>>>>>>>>>>>>>>>>> "Add row"')
-                        # get latest row_index
-                        if new_items != []:
-                            for new_item in new_items:
-                                # new_item will be {'ID': '14', 'Projects': 'Citic', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'Citicpacific123#@!', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://www.citicpacific.com/en/', 'Comment': '', 'Polylang': 'TRUE'}, {}, {'ID': '30', 'Projects': 'GIBF', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': '', 'WP Version': '', 'Password': '5PYSO9tONhpfztggNyry(%uM', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://gibf-bio.com', 'Comment': 'There is a pending change of your email to cyrus@lolli.com.hk', 'Polylang': 'FALSE'}
-                                print(append_google_sheet_row(current_user, new_item))
-                    elif action == 'Add column':
-                        # update google sheet data
-                        print('>>>>>>>>>>>>>>>>>>>> "Add column"')
-                        append_google_sheet_column(current_user, column_title)
+                if action == 'Add row':
+                    # update google sheet data
+                    print('>>>>>>>>>>>>>>>>>>>> "Add row"')
+                    # get latest row_index
+                    if new_items != []:
+                        for new_item in new_items:
+                            # new_item will be {'ID': '14', 'Projects': 'Citic', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'Citicpacific123#@!', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://www.citicpacific.com/en/', 'Comment': '', 'Polylang': 'TRUE'}, {}, {'ID': '30', 'Projects': 'GIBF', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': '', 'WP Version': '', 'Password': '5PYSO9tONhpfztggNyry(%uM', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://gibf-bio.com', 'Comment': 'There is a pending change of your email to cyrus@lolli.com.hk', 'Polylang': 'FALSE'}
+                            print(append_google_sheet_row(current_user, new_item))
+                            messages.append({"role": "system", "content": f"New row have been added: {new_item}"})
                     else:
-                        print('>>>>>>>>>>>>>>>>>>>> "Modify"')
-                        
+                        messages.append({"role": "system", "content": "No new row have been added"})
+                elif action == 'Add column':
+                    # update google sheet data
+                    print('>>>>>>>>>>>>>>>>>>>> "Add column"')
+                    append_google_sheet_column(current_user, column_title)
+                    messages.append({"role": "system", "content": f"Added new column: {column_title}"})
+                else:
+                    print('>>>>>>>>>>>>>>>>>>>> "Modify"')
+                    # search for the row_index
+                    sheet_result = collection_embedded_server.find({
+                        'domain': domain,
+                        'plot': {'$elemMatch': {'$eq': old_value}}
+                    })
+                    if sheet_result:
+                        for message in sheet_result:
+                            row_index = message['row_index']
+                            print('>>>>>>>>>>>>>>>>>>>> found row: ', row_index)
+                    if row_index != -1 and column_index != -1:
+                        # rage = "Sheet1!"+chr(65 + column_index) + str(row_index)
+                        # print("rage 1: ", rage)
+                        update_google_sheet_data(current_user, new_value, column_index, row_index + 1)
+                        messages.append({"role": "system", "content": f"Information has been updated: {old_value} -> {new_value} at row {row_index + 1}, column {column_index}"})
+                    else:
+                        messages.append({"role": "system", "content": "No information has been updated"})
 
-
+            else:
+                print('==================== NO ACTION')
+                target_action = "no_action"
 
             print('>>>>>>>>>>>>>>>>>>>> end analysis text for action')
             # for embedding in action_info:
@@ -496,10 +521,10 @@ def get_chat_completions(request):
             print(e)
             messages.append({"role": "system", "content": "Sorry, I can't update the information, please try again!"})
     print('==================== END HANDLE ACTIONS')
-    return {"status": "success", "messages": messages}
     # end handle action
-    print("target_action: ", target_action)
+    # print("target_action: ", target_action)
     completion = []
+    print('>>>>>>>>>>>> show_messages', messages)
     if target_action == "has_action":
         completion = show_message(messages)
 
