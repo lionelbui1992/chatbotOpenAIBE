@@ -3,7 +3,7 @@ from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from pymongo import MongoClient, errors
-from db import collection_total, collection_attribute, collection_embedded_server, truncate_collection
+from db import collection_attribute, collection_embedded_server, truncate_collection
 
 def get_google_sheets_data(current_user, google_access_token, google_selected_details):
     domain = current_user['domain']
@@ -53,7 +53,7 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
                     
                     search_vector = response.data[0].embedding
 
-                    print('>>>>>>>> Adding Data to MongoDB...', 'total')
+                    # print('>>>>>>>> Adding Data to MongoDB...', 'total')
                     collection_embedded_server.insert_one(
                         {
                             "title": 'total',
@@ -89,9 +89,9 @@ def import_heading_attributes(domain, headers):
     ]
     try:
         for index, header in enumerate(headers):
-            if header in exclude_attributes:
-                print('<<<<<<<<< Skipping heading...', header)
-                continue
+            # if header in exclude_attributes:
+            #     print('<<<<<<<<< Skipping heading...', header)
+            #     continue
             print('<<<<<<<<< Importing heading...', header)
             input_text = header
             column_name = index
@@ -126,19 +126,19 @@ def import_embedding_data(domain, row, headers, index):
         
         search_vector = response.data[0].embedding
         print('Importing embedding...', row[1])
-        collection_embedded_server.insert_one(
-            {
-                "title": row[1].strip(),
-                'header_column' : headers,
-                "plot": row,
-                "plot_embedding": search_vector,
-                "type": "server",
-                "row_index": index,
-                "column_count": len(row),
-                "domain": domain
-
-            }
-        )
+        insert_data = {
+            "title": row[1].strip(),
+            'header_column' : headers,
+            "plot": row,
+            "plot_embedding": search_vector,
+            "type": "server",
+            "row_index": index,
+            "column_count": len(row),
+            "domain": domain
+        }
+        for i in range(len(row)):
+            insert_data[headers[i]] = row[i]
+        collection_embedded_server.insert_one(insert_data)
 
     except Exception as e:
         print(e)
