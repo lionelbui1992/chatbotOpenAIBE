@@ -74,20 +74,20 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:
-        print(e)
-        return jsonify({'message': 'An error occurred while retrieving data'})
+        print(':::::::::::ERROR - get_google_sheets_data:::::::::::::', e)
+        return jsonify({'message': 'An error occurred while retrieving data: ' + str(e)})
 
 def import_heading_attributes(domain, headers):
     # skip this attributes key
-    exclude_attributes = [
-        'ID',
-        'STT',
-        'So thu tu',
-        'Số thứ tự',
-        'no',
-        'no.',
-        '#',
-    ]
+    # exclude_attributes = [
+    #     'ID',
+    #     'STT',
+    #     'So thu tu',
+    #     'Số thứ tự',
+    #     'no',
+    #     'no.',
+    #     '#',
+    # ]
     try:
         for index, header in enumerate(headers):
             # if header in exclude_attributes:
@@ -114,7 +114,7 @@ def import_heading_attributes(domain, headers):
             })
 
     except Exception as e:
-        print(e)
+        print(':::::::::::ERROR - import_heading_attributes:::::::::::::', e)
 
 
 def import_embedding_data(domain, row, headers, index):
@@ -142,7 +142,7 @@ def import_embedding_data(domain, row, headers, index):
         collection_embedded_server.insert_one(insert_data)
 
     except Exception as e:
-        print(e)
+        print(':::::::::::ERROR - import_embedding_data:::::::::::::', e)
 
 def update_google_sheet_data(current_user, values: str, column_index: number, row_index: number):
 
@@ -177,7 +177,7 @@ def update_google_sheet_data(current_user, values: str, column_index: number, ro
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:
-        print(e)
+        print(':::::::::::ERROR - update_google_sheet_data:::::::::::::', e)
         return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_row(current_user, new_item):
@@ -222,7 +222,7 @@ def append_google_sheet_row(current_user, new_item):
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:
-        print(e)
+        print(':::::::::::ERROR - append_google_sheet_row:::::::::::::', e)
         return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_column(current_user, column_name):
@@ -255,5 +255,5 @@ def append_google_sheet_column(current_user, column_name):
 
         return jsonify({'message': 'Data retrieved and printed successfully'})
     except Exception as e:
-        print(e)
+        print(':::::::::::ERROR - append_google_sheet_column:::::::::::::', e)
         return jsonify({'message': 'An error occurred while retrieving data'})

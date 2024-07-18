@@ -1,6 +1,6 @@
 from datetime import timedelta
 import time
-from flask import Flask, abort, json, redirect, request, jsonify, current_app
+from flask import Flask, json, redirect, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
