@@ -10,7 +10,7 @@ def get_models():
         "object": "list",
         "data": [
             {
-            "id": "gpt-4o",
+            "id": "gpt-4o-mini",
             "object": "model",
             "created": time.time(),
             "owned_by": "system"
