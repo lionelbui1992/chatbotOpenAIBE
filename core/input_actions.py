@@ -92,7 +92,6 @@ Here is the input text:
 """
 
 Your response should follow this JSON structure:
-```json
 {{
     "action": "Modify",
     "conditions": [
@@ -104,9 +103,7 @@ Your response should follow this JSON structure:
     "new_value": "new_value",
     "new_items": []
 }}
-```
 column_title_1, column_title_2, value_1, value_2, old_value, and new_value should be replaced with the appropriate values.
-```json
 {{
     "action": "Add row",
     "conditions": [
@@ -118,7 +115,6 @@ column_title_1, column_title_2, value_1, value_2, old_value, and new_value shoul
     "new_value": "",
     "new_items": {all_example_data}
 }}
-```
 new_items should be replaced with the appropriate values based on the action or random values as described by column titles.
 **Guidelines**:
 - If the action or column title can't be determined from the text, use "None".

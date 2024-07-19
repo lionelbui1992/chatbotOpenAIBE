@@ -58,28 +58,37 @@ def set_user_settings(request):
 
 def set_user_setting_google(request):
     current_user_id = get_jwt_identity()
-    print(current_user_id)
+    update_data = request.get_json().get('updateData')
+    print(current_user_id, update_data)
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
     data = request.get_json()
     google_access_token = data.get('googleAccessToken')
     google_selected_details = data.get('googleSelectedDetails')
+    old_google_selected_details = current_user['settings']['googleSelectedDetails']
     if current_user:
+        respnse_message = {
+            "status": "success",
+            "message": ""
+        }
         try:
-            data = get_google_sheets_data(current_user, google_access_token, google_selected_details)
+            # update new data
             current_user['settings']['googleAccessToken'] = google_access_token
             current_user['settings']['googleSelectedDetails'] = google_selected_details
-            collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': current_user['settings']}})
-            return {
-                "status": "success",
-                "message": "Google settings updated"
-            }
+            collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.googleAccessToken': google_access_token}})
+            collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.googleSelectedDetails': google_selected_details}})
+            # update google sheet data if google sheet details are different
+            if update_data or old_google_selected_details != google_selected_details:
+                get_google_sheets_data(current_user, google_access_token, google_selected_details)
+                respnse_message['message'] = "Google settings updated and data retrieved"
+            else:
+                respnse_message['message'] = "Google settings updated"
         except Exception as e:
-            return {
-                "status": "error",
-                "message": "An error occurred while retrieving data" + str(e)
-            }
+            print(':::::::::::ERROR - set_user_setting_google ', str(e))
+            respnse_message['status'] = "error"
+            respnse_message['message'] = "An error occurred while updating settings" + str(e)
     else:
-        return {
+        respnse_message = {
             "status": "error",
-            "message": "Invalid user ID or token"
+            "message": "Invalid user token"
         }
+    return respnse_message
