@@ -1,8 +1,8 @@
 from bson import ObjectId
-from flask import jsonify, current_app
+from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.google_sheet import append_google_sheet_column, append_google_sheet_row, update_google_sheet_data
-from core.input_actions import get_analysis_input_action, get_analysis_input_action_v2
+from core.input_actions import get_analysis_input_action
 from core.openai import create_completion, create_embedding
 from db import collection_embedded_server, collection_action, collection_attribute, collection_users
 
@@ -172,53 +172,36 @@ def get_chat_completions(request):
     """
     Get the chat completions based on the given request.
     """
-    # print('>>>>>>>>>>>> verify user')
+    # verify the user
     current_user_id = get_jwt_identity()
+    # get the current user include user settings
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
 
     if not current_user:
         return {"error": "Invalid user ID or token"}
-    
-    domain = current_user['domain']
 
 
     data = request.get_json()
     input_messages = data.get('messages', [])
     messages = []
     # message only get latest item from input_messages
-    # messages.append(input_messages[-1].copy())
 
-    # print("messages: ", messages)
     if not input_messages:
         return jsonify({"error": "No messages provided"})
     
     # get latest message content text
     latest_message = input_messages[-1].get('content', "")
     input_text = latest_message[0].get('text', "")
-    #print("messages: ", input_text)
 
-    # print('>>>>>>>>>>>> get input data: ', input_text)
-
-    print('>>>>>>>>>>>> search server embedding')
-    # get the embedding
-    search_vector = embedding_function(input_text)
-    # end get the embedding
-    # handle search info
     # handle action
     print('==================== HANDLE ACTIONS')
-
     action_info =[]
     target_action = ""
-    # rage = ""
     column_index = ""
-    # column_name = ""
-
     print('>>>>>>>>>>>>>>>>>>>> analysis text for action')
     try:
         target_action = "has_action"
-        # action_info = get_analysis_input_action(input_text, domain)
-        action_info = get_analysis_input_action_v2(input_text=input_text, domain=domain)
-        # return jsonify({"error": "No messages provided"})
+        action_info = get_analysis_input_action(input_text=input_text, domain=current_user['domain'])
         # Convert action_info string to dictionary
         print('action_info: ', action_info)
         action_info_dict = json.loads(action_info)
@@ -236,7 +219,7 @@ def get_chat_completions(request):
             row_index = -1
             if column_title != 'None':
                 # get column_index from collection_attribute
-                search_attribute = embedding_search_attribute(column_title, domain)
+                search_attribute = embedding_search_attribute(column_title, current_user['domain'])
                 # print('search_attribute: ', search_attribute)
                 for message in search_attribute:
                     print('>>>>> found column: ', message.get('column_index', 0))
@@ -250,6 +233,7 @@ def get_chat_completions(request):
                 # get latest row_index
                 if new_items != []:
                     temp_message = ''
+                    # new_items is an array of items to be added
                     for index, new_item in enumerate(new_items):
                         print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item, type(new_item))
                         new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
@@ -282,7 +266,7 @@ def get_chat_completions(request):
                 print('>>>>>>>>>>>>>>>>>>>> "Modify"')
                 # search for the row_index
                 sheet_result = collection_embedded_server.find({
-                    'domain': domain,
+                    'domain': current_user['domain'],
                     'plot': {'$elemMatch': {'$eq': old_value}}
                 })
                 if sheet_result:
@@ -290,8 +274,6 @@ def get_chat_completions(request):
                         row_index = message['row_index']
                         print('>>>>>>>>>>>>>>>>>>>> found row: ', row_index)
                 if row_index != -1 and column_index != -1:
-                    # rage = "Sheet1!"+chr(65 + column_index) + str(row_index)
-                    # print("rage 1: ", rage)
                     update_google_sheet_data(current_user, new_value, column_index, row_index + 1)
                     messages.append({"role": "system", "content": f"Information has been updated: {old_value} -> {new_value} at row {row_index + 1}, column {column_index}"})
                 else:
@@ -315,17 +297,18 @@ def get_chat_completions(request):
     if target_action == "has_action":
         completion = create_completion(messages)
 
-    
     try:
+        print('>>>>>>>>>>>> search server embedding')
+        # get the embedding
+        search_vector = embedding_function(input_text)
         # run pipeline
-        aggregate_result    = embedding_search_info(search_vector, domain, 5)
+        aggregate_result    = embedding_search_info(search_vector, current_user['domain'], 5)
         print("aggregate_result: ", aggregate_result)
         header_column       = ""
         score               = 0
         full_plot           = ""
         target_score       = 0 # target score to show message
 
-      
         for message in aggregate_result:
             # title = message['title']
             score = message['score']
@@ -347,8 +330,6 @@ def get_chat_completions(request):
                     header_column = message['header_column'][index] # index
                 else:
                     header_column = ""
-                    
-                
 
                 full_plot = full_plot + header_column + ":" + value + ", "
                 index += 1
@@ -366,18 +347,8 @@ def get_chat_completions(request):
     else:
         messages.append({"role": "user", "content":"WITH ABOVE INFORMATIONS ONLY"})
         completion = create_completion(messages)
-        
 
-    #print("messages: ", messages)
-
-    # for m in messages:
-    #     print(m)
-    #     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     completion_dict = completion.to_dict()
-
-    # Serialize the dictionary to a JSON string
-    # chat_completion_json = json.dumps(completion_dict, indent=2)
-    # clone choices message to choices delta: choices[]['delta'] = choices[]['message']
 
     for choice in completion_dict['choices']:
         choice['delta'] = choice['message']

@@ -1,9 +1,10 @@
 from flask_jwt_extended import get_jwt_identity
 from core.google_sheet import get_google_sheets_data
+from core.input_actions import create_user_instructions
 from db import collection_users
 from bson.objectid import ObjectId
 
-def get_user_settings(request):
+def get_user_settings():
     current_user_id = get_jwt_identity()
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
     if current_user:
@@ -40,6 +41,8 @@ def set_user_settings(request):
 
     if google_access_token and google_selected_details:
         get_google_sheets_data(current_user, google_access_token, google_selected_details)
+        instruction_prompt = create_user_instructions(current_user['domain'])
+        current_user['settings']['instructions'] = instruction_prompt
     
     if current_user:
         collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings': data}})
@@ -79,6 +82,9 @@ def set_user_setting_google(request):
             # update google sheet data if google sheet details are different
             if update_data or old_google_selected_details != google_selected_details:
                 get_google_sheets_data(current_user, google_access_token, google_selected_details)
+                instruction_prompt = create_user_instructions(current_user['domain'])
+                current_user['settings']['instructions'] = instruction_prompt
+                collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.instructions': instruction_prompt}})
                 respnse_message['message'] = "Google settings updated and data retrieved"
             else:
                 respnse_message['message'] = "Google settings updated"

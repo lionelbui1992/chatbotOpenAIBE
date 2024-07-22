@@ -1,4 +1,5 @@
-from flask import current_app
+import json
+from flask import current_app, jsonify
 
 def create_embedding(input_string:str):
     """

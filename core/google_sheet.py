@@ -76,21 +76,8 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
         return jsonify({'message': 'An error occurred while retrieving data: ' + str(e)})
 
 def import_heading_attributes(domain, headers):
-    # skip this attributes key
-    # exclude_attributes = [
-    #     'ID',
-    #     'STT',
-    #     'So thu tu',
-    #     'Số thứ tự',
-    #     'no',
-    #     'no.',
-    #     '#',
-    # ]
     try:
         for index, header in enumerate(headers):
-            # if header in exclude_attributes:
-            #     print('<<<<<<<<< Skipping heading...', header)
-            #     continue
             print('<<<<<<<<< Importing heading...', header)
             input_text = header
             column_name = index
@@ -236,8 +223,6 @@ def append_google_sheet_column(current_user, column_name):
             else:
                 # append new column to the last column
                 rows[0].append(column_name)
-                # for row in rows:
-                #     row.append('')
                 result = service.spreadsheets().values().update(
                     spreadsheetId=sheet_id, range=range_name,
                     valueInputOption='RAW', body={'values': rows}).execute()
