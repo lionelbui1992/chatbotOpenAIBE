@@ -3,6 +3,7 @@ from flask import jsonify, current_app
 from flask_jwt_extended import get_jwt_identity
 from core.google_sheet import append_google_sheet_column, append_google_sheet_row, update_google_sheet_data
 from core.input_actions import get_analysis_input_action, get_analysis_input_action_v2
+from core.openai import create_completion, create_embedding
 from db import collection_embedded_server, collection_action, collection_attribute, collection_users
 
 import json
@@ -91,15 +92,15 @@ def embedding_search_total(searchVector, domain):
     
     return info_funtion
 
-def embedding_search_info(searchVector, domain, limit=100):
+def embedding_search_info(search_vector, domain, limit=100):
     """
-    Search for information in the database based on the given searchVector, domain, and limit.
+    Search for information in the database based on the given search_vector, domain, and limit.
     """
     pipeline = [{
         '$vectorSearch': {
             'index': 'vector_index', 
             'path': 'plot_embedding', 
-            'queryVector': searchVector, 
+            'queryVector': search_vector, 
             'numCandidates': 150, 
             'limit': limit
         }
@@ -164,28 +165,14 @@ def embedding_function(input_text):
     """
     Get the embedding for the given input_text.
     """
-    response = current_app.openAIClient.embeddings.create(
-        input=input_text,
-        model=current_app.config['EMBEDDING_MODEL']
-    )
+    response = create_embedding(input_string = input_text)
     return response.data[0].embedding
-
-def show_message(messages):
-    """
-    Show the message based on the given messages.
-    """
-    completion = current_app.openAIClient.chat.completions.create(
-        model=current_app.config['OPENAI_MODEL'],
-        messages= messages
-    )
-    #print("total tockens", completion.choices[0].message.total_tokens)
-    return completion
 
 def get_chat_completions(request):
     """
     Get the chat completions based on the given request.
     """
-    print('>>>>>>>>>>>> verify user')
+    # print('>>>>>>>>>>>> verify user')
     current_user_id = get_jwt_identity()
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
 
@@ -230,7 +217,7 @@ def get_chat_completions(request):
     try:
         target_action = "has_action"
         # action_info = get_analysis_input_action(input_text, domain)
-        action_info = get_analysis_input_action_v2(input_text, domain)
+        action_info = get_analysis_input_action_v2(input_text=input_text, domain=domain)
         # return jsonify({"error": "No messages provided"})
         # Convert action_info string to dictionary
         print('action_info: ', action_info)
@@ -264,17 +251,33 @@ def get_chat_completions(request):
                 if new_items != []:
                     temp_message = ''
                     for index, new_item in enumerate(new_items):
+                        print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item, type(new_item))
+                        new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
+
+                        print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item_string)
                         # new_item will be {'ID': '14', 'Projects': 'Citic', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'Citicpacific123#@!', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://www.citicpacific.com/en/', 'Comment': '', 'Polylang': 'TRUE'}, {}, {'ID': '30', 'Projects': 'GIBF', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': '', 'WP Version': '', 'Password': '5PYSO9tONhpfztggNyry(%uM', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://gibf-bio.com', 'Comment': 'There is a pending change of your email to cyrus@lolli.com.hk', 'Polylang': 'FALSE'}
-                        print(append_google_sheet_row(current_user, new_item))
-                        temp_message += f"{index + 1}. {new_item}"
+                        add_row_response = append_google_sheet_row(current_user, new_item)
+                        if add_row_response.status == 'success':
+                            temp_message += f"{index + 1}. {new_item_string} -> Added\n"
+                        else:
+                            temp_message += f"{index + 1}. {new_item_string} -> Failed\n"
                     messages.append({"role": "system", "content": f"Added new row: {temp_message}"})
                 else:
                     messages.append({"role": "system", "content": "No new row have been added"})
             elif action == 'Add column':
                 # update google sheet data
                 print('>>>>>>>>>>>>>>>>>>>> "Add column"')
-                append_google_sheet_column(current_user, column_title)
-                messages.append({"role": "system", "content": f"Added new column: {column_title}"})
+                try:
+                    add_column_response = append_google_sheet_column(current_user, column_title)
+                    if add_column_response.status == 'success':
+                        messages.append({"role": "system", "content": f"Added new column: {column_title}"})
+                        print('>>>>>>>>>>>>>>>>>>>> "Add column" success')
+                    else:
+                        messages.append({"role": "system", "content": "Sorry, I can't add the new column, please try again! {add_column_response.message}"})
+                        print('>>>>>>>>>>>>>>>>>>>> "Add column" failed')
+                except Exception as e:
+                    print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
+                    messages.append({"role": "system", "content": "Sorry, I can't add the new column, please try again! {e}"})
             else:
                 print('>>>>>>>>>>>>>>>>>>>> "Modify"')
                 # search for the row_index
@@ -310,7 +313,7 @@ def get_chat_completions(request):
     completion = []
     print('>>>>>>>>>>>> show_messages', messages)
     if target_action == "has_action":
-        completion = show_message(messages)
+        completion = create_completion(messages)
 
     
     try:
@@ -359,10 +362,10 @@ def get_chat_completions(request):
     messages.append({"role": "user", "content":input_text})
     
     if(target_score == 0):
-        completion = show_message(messages)
+        completion = create_completion(messages)
     else:
         messages.append({"role": "user", "content":"WITH ABOVE INFORMATIONS ONLY"})
-        completion = show_message(messages)
+        completion = create_completion(messages)
         
 
     #print("messages: ", messages)

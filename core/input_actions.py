@@ -1,5 +1,5 @@
 import json
-from flask import current_app
+from core.openai import create_completion
 from db import collection_embedded_server, collection_attribute
 
 def get_analysis_input_action(input_text: str, domain: str):
@@ -31,7 +31,7 @@ def get_analysis_input_action(input_text: str, domain: str):
     # print('||||||||||||||||||||All title',)
 
     # get random 3 data from collection_embedded_server
-    search_result = get_random_embedded_data(3)
+    search_result = get_random_embedded_data(domain=domain, number_of_data=3)
     for result_item in search_result:
         # message type is dict
         example_data.append(result_item)
@@ -116,10 +116,7 @@ Here are some example input texts to illustrate:
 - "Delete rows: column_title_1 is value_1 and column_title_2 is value_2."
 old_value, new_value, value_1, value_2, column_title_1, column_title_2, and avaible_title should be replaced with the appropriate values.'''}
     ]
-    completion = current_app.openAIClient.chat.completions.create(
-        model="gpt-4o-mini",
-        messages= var_messages
-    )
+    completion = create_completion(messages=var_messages)
     message = completion.choices[0].message.content
     # print('::::::::::::::::::::::::::::::::::::::::::::::')
     # print('prompt: ', var_messages)
@@ -161,23 +158,28 @@ def get_analysis_input_action_v2(input_text: str, domain: str):
         }
     ])
     # get random 3 data from collection_embedded_server
-    search_result = get_random_embedded_data(domain, 1)
+    search_result = get_random_embedded_data(domain=domain, number_of_data=1)
     for result_item in search_result:
         # message type is dict
         # set '-' if the value is empty
         for key, value in result_item.items():
             if value == '':
                 result_item[key] = '-'
-        # example_data1 is array of key values, separated by comma
-        example_data1 = ', '.join([f'{key} \'{value}\'' for key, value in result_item.items()])
-        # example_data2 is array of values, separated by comma
-        example_data2 = ', '.join([f'"{value}"' for value in result_item.values()])
-        # example_data3 is first key value
-        example_data3 = f'{list(result_item.keys())[0]}'
-        # example_data4 is second key value
-        example_data4 = f'{list(result_item.keys())[1]}'
-        # example_data5 is second value
-        example_data5 = f'{list(result_item.values())[1]}'
+        if (len(result_item) > 0):
+            # example_data1 is array of key values, separated by comma
+            example_data1 = ', '.join([f'{key} \'{value}\'' for key, value in result_item.items()])
+            # example_data2 is array of values, separated by comma
+            example_data2 = ', '.join([f'"{value}"' for value in result_item.values()])
+            # example_data3 is first key value
+            example_data3 = f'{list(result_item.keys())[0]}'
+        if (len(result_item) > 1):
+            # example_data4 is second key value
+            example_data4 = f'{list(result_item.keys())[1]}'
+            # example_data5 is second value
+            example_data5 = f'{list(result_item.values())[1]}'
+        else:
+            example_data4 = '-'
+            example_data5 = '-'
 
     #     example_data.append(result_item)
     # all_example_data = ', '.join([json.dumps(data) for data in example_data])
@@ -205,7 +207,7 @@ Your responses should always be in JSON format following this template:
     "new_column_title": "new column title value", "" if not applicable,
     "value_to_edit": "row old value", "" if not applicable,
     "value_to_replace": "row new value", "" if not applicable,
-    "values": [] if not applicable, value should be full row data in the order of the table columns.
+    "values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
 }}
 
 Steps to follow:
@@ -268,19 +270,16 @@ Response:
 Ask users to provide all details for each action to avoid "missing_data" status where possible.
 
 Your response should only be in JSON format.'''
-    completion = current_app.openAIClient.chat.completions.create(
-        model="gpt-4o-mini",
-        messages= [
-            {
-                "role": "system",
-                "content": prompt
-            },
-            {
-                "role": "user",
-                "content": input_text
-            }
-        ]
-    )
+    completion = create_completion(messages= [
+        {
+            "role": "system",
+            "content": prompt
+        },
+        {
+            "role": "user",
+            "content": input_text
+        }
+    ])
     message = completion.choices[0].message.content
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -292,7 +291,6 @@ Your response should only be in JSON format.'''
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     return message
-
 
 def get_random_embedded_data(domain: str, number_of_data: int) -> list:
     """

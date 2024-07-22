@@ -4,6 +4,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from numpy import number
 from pymongo import MongoClient, errors
+from core.openai import create_embedding
 from db import collection_attribute, collection_embedded_server, truncate_collection
 
 def get_google_sheets_data(current_user, google_access_token, google_selected_details):
@@ -47,10 +48,7 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
                 total_strings = ['total', 'count', 'sum', 'how many']
                 for total_string in total_strings:
 
-                    response = current_app.openAIClient.embeddings.create(
-                        input = total_string,
-                        model="text-embedding-3-small"
-                    )
+                    response = create_embedding(input_string = total_string)
                     
                     search_vector = response.data[0].embedding
 
@@ -98,10 +96,7 @@ def import_heading_attributes(domain, headers):
             column_name = index
             
 
-            response = current_app.openAIClient.embeddings.create(
-                input=header,
-                model="text-embedding-3-small"
-            )
+            response = create_embedding(header)
 
             search_vector = response.data[0].embedding
 
@@ -116,14 +111,10 @@ def import_heading_attributes(domain, headers):
     except Exception as e:
         print(':::::::::::ERROR - import_heading_attributes:::::::::::::', e)
 
-
 def import_embedding_data(domain, row, headers, index):
     try:
         row_string = ', ' . join(row)
-        response = current_app.openAIClient.embeddings.create(
-            input=row_string,
-            model="text-embedding-3-small"
-        )
+        response = create_embedding(row_string)
         
         search_vector = response.data[0].embedding
         print('Importing embedding...', row[1])
@@ -181,24 +172,14 @@ def update_google_sheet_data(current_user, values: str, column_index: number, ro
         return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_row(current_user, new_item):
-    # new_item :{
-    #     "ID": "87",
-    #     "Projects": "Teenskey",
-    #     "Need to upgrade": "",
-    #     "Set Index , Follow": "",
-    #     "Auto Update": "OFF",
-    #     "WP Version": "6.0.1",
-    #     "Password": "lollimedia",
-    #     "Login Email": "cyrus@lolli.com.hk",
-    #     "Site Url": "https://teenskey.org/",
-    #     "Comment": "for teenskey.org/cmsadmin, pw is Teenskey123#@!",
-    #     "Polylang": "TRUE"
-    # }
     google_access_token = current_user['settings']['googleAccessToken']
     google_selected_details = current_user['settings']['googleSelectedDetails']
 
     if not google_access_token or not google_selected_details:
-        return jsonify({'message': 'Google access token or selected details not provided'})
+        return jsonify({
+            'status': 'error',
+            'message': 'Google access token or selected details not provided'
+        })
     try:
         # Create Google API credentials from the access token
         credentials = Credentials(token=google_access_token)
@@ -220,17 +201,26 @@ def append_google_sheet_row(current_user, new_item):
                 print('{0} cells updated.'.format(result.get('updatedCells')))
 
 
-        return jsonify({'message': 'Data retrieved and printed successfully'})
+        return jsonify({
+            'status': 'success',
+            'message': 'Data retrieved and printed successfully'
+        })
     except Exception as e:
         print(':::::::::::ERROR - append_google_sheet_row:::::::::::::', e)
-        return jsonify({'message': 'An error occurred while retrieving data'})
+        return jsonify({
+            'status': 'error',
+            'message': 'An error occurred while retrieving data {e}'
+        })
 
 def append_google_sheet_column(current_user, column_name):
     google_access_token = current_user['settings']['googleAccessToken']
     google_selected_details = current_user['settings']['googleSelectedDetails']
 
     if not google_access_token or not google_selected_details:
-        return jsonify({'message': 'Google access token or selected details not provided'})
+        return jsonify({
+            'status': 'error',
+            'message': 'Google access token or selected details not provided'
+        })
     try:
         # Create Google API credentials from the access token
         credentials = Credentials(token=google_access_token)
@@ -253,7 +243,13 @@ def append_google_sheet_column(current_user, column_name):
                     valueInputOption='RAW', body={'values': rows}).execute()
                 print('{0} cells updated.'.format(result.get('updatedCells')))
 
-        return jsonify({'message': 'Data retrieved and printed successfully'})
+        return jsonify({
+            'status': 'success',
+            'message': 'Data retrieved and printed successfully'
+        })
     except Exception as e:
         print(':::::::::::ERROR - append_google_sheet_column:::::::::::::', e)
-        return jsonify({'message': 'An error occurred while retrieving data'})
+        return jsonify({
+            'status': 'error',
+            'message': 'An error occurred while retrieving data {e}'
+        })
