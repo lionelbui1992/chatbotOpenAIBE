@@ -69,7 +69,7 @@ def set_user_setting_google(request):
     google_selected_details = data.get('googleSelectedDetails')
     old_google_selected_details = current_user['settings']['googleSelectedDetails']
     if current_user:
-        respnse_message = {
+        response_message = {
             "status": "success",
             "message": ""
         }
@@ -85,16 +85,25 @@ def set_user_setting_google(request):
                 instruction_prompt = create_user_instructions(current_user['domain'])
                 current_user['settings']['instructions'] = instruction_prompt
                 collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.instructions': instruction_prompt}})
-                respnse_message['message'] = "Google settings updated and data retrieved"
+                response_message['data'] = {
+                    "instructions": instruction_prompt
+                }
+                response_message['message'] = "Google settings updated and data retrieved"
             else:
-                respnse_message['message'] = "Google settings updated"
+                instruction_prompt = 'You are helpfull assistant'
+                current_user['settings']['instructions'] = instruction_prompt
+                collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.instructions': instruction_prompt}})
+                response_message['data'] = {
+                    "instructions": instruction_prompt
+                }
+                response_message['message'] = "Google settings updated"
         except Exception as e:
             print(':::::::::::ERROR - set_user_setting_google ', str(e))
-            respnse_message['status'] = "error"
-            respnse_message['message'] = "An error occurred while updating settings" + str(e)
+            response_message['status'] = "error"
+            response_message['message'] = "An error occurred while updating settings" + str(e)
     else:
-        respnse_message = {
+        response_message = {
             "status": "error",
             "message": "Invalid user token"
         }
-    return respnse_message
+    return response_message
