@@ -80,23 +80,20 @@ def set_user_setting_google(request):
             collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.googleAccessToken': google_access_token}})
             collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.googleSelectedDetails': google_selected_details}})
             # update google sheet data if google sheet details are different
+            instruction_prompt = 'You are helpfull assistant'
             if update_data or old_google_selected_details != google_selected_details:
                 get_google_sheets_data(current_user, google_access_token, google_selected_details)
-                instruction_prompt = create_user_instructions(current_user['domain'])
-                current_user['settings']['instructions'] = instruction_prompt
-                collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.instructions': instruction_prompt}})
-                response_message['data'] = {
-                    "instructions": instruction_prompt
-                }
                 response_message['message'] = "Google settings updated and data retrieved"
+                # update instruction prompt if google sheet details are different and not empty
+                if google_selected_details:
+                    instruction_prompt = create_user_instructions(current_user['domain'])
             else:
-                instruction_prompt = 'You are helpfull assistant'
-                current_user['settings']['instructions'] = instruction_prompt
-                collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.instructions': instruction_prompt}})
-                response_message['data'] = {
-                    "instructions": instruction_prompt
-                }
                 response_message['message'] = "Google settings updated"
+            current_user['settings']['instructions'] = instruction_prompt
+            collection_users.update_one({'_id': current_user['_id']}, {'$set': {'settings.instructions': instruction_prompt}})
+            response_message['data'] = {
+                "instructions": instruction_prompt
+            }
         except Exception as e:
             print(':::::::::::ERROR - set_user_setting_google ', str(e))
             response_message['status'] = "error"
