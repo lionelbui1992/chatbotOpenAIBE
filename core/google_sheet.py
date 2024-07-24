@@ -8,11 +8,10 @@ from numpy import number
 from core.openai import create_embedding
 from db import collection_attribute, collection_embedded_server, collection_domain, collection_spreadsheets, truncate_collection
 
-from flask_babel import _
 MESSAGE_CONSTANT = {
-    'google_access_token_or_selected_details_not_provided': _('Google access token or selected details not provided'),
-    'no_data_found': _('No data found.'),
-    'data_retrieved_and_printed_successfully': _('Data retrieved and printed successfully'),
+    'google_access_token_or_selected_details_not_provided': 'Google access token or selected details not provided',
+    'no_data_found': 'No data found.',
+    'data_retrieved_and_printed_successfully': 'Data retrieved and printed successfully',
 }
 
 def get_gspread_client(google_access_token: str) -> gspread.Client:
@@ -87,7 +86,7 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
     except Exception as e:
         print(':::::::::::ERROR - get_google_sheets_data:::::::::::::', e)
         error_message = str(e)
-        return jsonify({'message': _('An error occurred while retrieving data: {error_message}')})
+        return jsonify({'message': 'An error occurred while retrieving data: {error_message}'})
 
 def pull_google_sheets_data(googleSelectedDetails: dict, gspread_client: gspread.Client) -> dict:
     """
@@ -109,7 +108,7 @@ def pull_google_sheets_data(googleSelectedDetails: dict, gspread_client: gspread
         error_message = str(e)
         return {
             'status': 'error',
-            'message': _('An error occurred while retrieving data: {error_message}')
+            'message': 'An error occurred while retrieving data: {error_message}'
         }
 
 
@@ -142,7 +141,7 @@ def import_google_sheets_data(_domain, rows: list):
             print(':::::::::::ERROR - import_google_sheets_data:::::::::::::', e)
             return {
                 'status': 'error',
-                'message': _('An error occurred while importing data')
+                'message': 'An error occurred while importing data'
             }
     # ===================== End Import to MongoDB ===================================
 
@@ -238,7 +237,7 @@ def update_google_sheet_data(current_user, values: str, column_index: number, ro
         return jsonify({'message': MESSAGE_CONSTANT['data_retrieved_and_printed_successfully']})
     except Exception as e:
         print(':::::::::::ERROR - update_google_sheet_data:::::::::::::', e)
-        return jsonify({'message': _('An error occurred while retrieving data')})
+        return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_row(current_user, new_item):
     domain_data = collection_domain.find_one({"domain": current_user['domain']})
@@ -282,7 +281,7 @@ def append_google_sheet_row(current_user, new_item):
         error_message = str(e)
         return jsonify({
             'status': 'error',
-            'message': _('An error occurred while retrieving data {error_message}')
+            'message': 'An error occurred while retrieving data {error_message}'
         })
 
 def append_google_sheet_column(current_user, column_name):
@@ -326,5 +325,5 @@ def append_google_sheet_column(current_user, column_name):
         error_message = str(e)
         return jsonify({
             'status': 'error',
-            'message': _('An error occurred while retrieving data {error_message}')
+            'message': 'An error occurred while retrieving data {error_message}'
         })

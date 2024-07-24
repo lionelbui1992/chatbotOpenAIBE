@@ -1,5 +1,4 @@
 from flask_jwt_extended import get_jwt_identity
-from flask_babel import _
 
 from core.domain import DomainObject
 from core.google_sheet import get_google_sheets_data, import_google_sheets_data, pull_google_sheets_data, get_gspread_client

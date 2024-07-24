@@ -12,8 +12,6 @@ from flask_jwt_extended import jwt_required
 
 from flask_pymongo import PyMongo
 
-from flask_babel import Babel, _
-
 from dotenv import load_dotenv
 
 from openai import OpenAI
@@ -40,9 +38,9 @@ app.config.from_object(Config)
 bcrypt = Bcrypt(app)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400  # 1 day
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000  # 30 days
-app.config['BABEL_DEFAULT_LOCALE'] = 'en'
-app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'es']
-babel = Babel(app)
+# app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+# app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'es']
+# babel = Babel(app)
 jwt = JWTManager(app)
 
 users = []  # Temporary in-memory user store
