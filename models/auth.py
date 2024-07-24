@@ -31,6 +31,8 @@ def auth_login(request):
         else:
             user['settings']['googleSelectedDetails'] = []
 
+        user['settings']['instructions'] = _domain.instructions
+
         return {
             "status": "success",
             "message": "Login successful",
@@ -102,7 +104,7 @@ def auth_register(request):
             "user_theme": "system",
             "theme": "light",
             "model": '',
-            "instructions": "",
+            "instructions": _domain.instructions,
             "speechModel": "tts-1",
             "speechVoice": "echo",
             "speechSpeed": 1,
