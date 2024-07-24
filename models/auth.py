@@ -1,6 +1,7 @@
 from flask import jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity
-from db import collection_users
+from core.domain import DomainObject
+from db import collection_users, collection_domain
 
 
 def auth_login(request):
@@ -17,11 +18,18 @@ def auth_login(request):
     user = collection_users.find_one({"email": email, "password": password})
     if user:
         user_id = str(user['_id'])
+        _domain = DomainObject.load(user['domain'])
         access_token = create_access_token(identity=user_id)
         refresh_token = create_refresh_token(identity=user_id)
 
         # save the token to the user
         collection_users.update_one({'_id': user_id}, {'$set': {'token': access_token}})
+        
+        # get googleSelectedDetails from domain
+        if _domain is not None:
+            user['settings']['googleSelectedDetails'] = [_domain.googleSelectedDetails] if _domain.googleSelectedDetails else []
+        else:
+            user['settings']['googleSelectedDetails'] = []
 
         return {
             "status": "success",
@@ -32,6 +40,7 @@ def auth_login(request):
                     "domain": str(user['domain']),
                     "email": str(user['email']),
                     "name": str(user['name']),
+                    "role": str(user['role']),
                     "settings": user['settings']
                 },
                 "token": access_token,
@@ -45,7 +54,7 @@ def auth_login(request):
 
 def auth_register(request):
     # Get the email and password from the request
-    email = f"buiduyet.it1@gmail.com"
+    email = "buiduyet.it1@gmail.com"
     # will be removed
     user = collection_users.find_one({"email": email})
     if user:
@@ -54,16 +63,16 @@ def auth_register(request):
     # will be removed
     
     data = request.get_json()
-    domain = data.get('domain')
+    _domain = DomainObject.load(data.get('domain'))
     email = data.get('email')
     password = data.get('password')
     re_password = data.get('re_password')
 
     # validate data
-    if not domain:
+    if _domain is None:
         return {
             "status": "error",
-            "message": "Domain is required"
+            "message": "DomainObject is required"
         }
     if not email or not password:
         return {
@@ -84,10 +93,11 @@ def auth_register(request):
         }
     # Create a new user
     user = {
-        "domain": domain,
+        "domain": str(_domain),
         "email": email,
         "name": email,
         "password": password,
+        "role": "user",
         "settings": {
             "user_theme": "system",
             "theme": "light",
@@ -97,7 +107,6 @@ def auth_register(request):
             "speechVoice": "echo",
             "speechSpeed": 1,
             "googleAccessToken": "",
-            "googleSelectedDetails": [],
             "tag": ["server"]
         }
     }
@@ -107,16 +116,21 @@ def auth_register(request):
     refresh_token = create_refresh_token(identity=user_id)
     # save the token to the user
     collection_users.update_one({'_id': user_id}, {'$set': {'token': access_token}})
-
+    # get googleSelectedDetails from domain
+    if _domain is not None:
+        user['settings']['googleSelectedDetails'] = [_domain.googleSelectedDetails] if _domain.googleSelectedDetails else []
+    else:
+        user['settings']['googleSelectedDetails'] = {}
     return {
         "status": "success",
         "message": "User registered",
         "data": {
             "user": {
                 "id": user_id,
-                "domain": domain,
+                "domain": str(_domain),
                 "email": email,
                 "name": email,
+                "role": "user",
                 "settings": user['settings']
             },
             "token": access_token,

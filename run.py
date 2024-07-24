@@ -1,20 +1,37 @@
-from datetime import timedelta
-import time
-from flask import Flask, json, redirect, request, jsonify
+from flask import Flask
+from flask import json
+from flask import redirect
+from flask import request
+from flask import jsonify
+
 from flask_cors import CORS
+
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager
+from flask_jwt_extended import jwt_required
+
+from flask_pymongo import PyMongo
+
+from flask_babel import Babel, _
+
 from dotenv import load_dotenv
-import os
 
 from openai import OpenAI
 import requests
-from config import Config
-from models.auth import auth_login, auth_refresh_token, auth_register
-from models.chat import get_chat_completions
-from models.models import get_models
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
-from models.user_settings import get_user_settings, set_user_setting_google, set_user_settings
+from config import Config
+
+from models.auth import auth_login
+from models.auth import auth_refresh_token
+from models.auth import auth_register
+
+from models.chat import get_chat_completions
+
+from models.models import get_models
+
+from models.user_settings import get_user_settings
+from models.user_settings import set_user_setting_google
+from models.user_settings import set_user_settings
 
 load_dotenv()
 
@@ -23,6 +40,9 @@ app.config.from_object(Config)
 bcrypt = Bcrypt(app)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400  # 1 day
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000  # 30 days
+app.config['BABEL_DEFAULT_LOCALE'] = 'en'
+app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'es']
+babel = Babel(app)
 jwt = JWTManager(app)
 
 users = []  # Temporary in-memory user store
@@ -36,6 +56,8 @@ CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "PUT", "POST
 app.openAIClient = OpenAI(
     api_key=app.config['OPENAI_API_KEY'],
 )
+
+app.mongo = PyMongo(app)
 
 @app.after_request
 def after_request_func(response):

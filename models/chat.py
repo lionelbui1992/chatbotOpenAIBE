@@ -60,7 +60,7 @@ def embedding_search_attribute(title, domain):
     
     return info_funtion
 
-def embedding_search_total(searchVector, domain):
+def embedding_search_total(search_vector, domain):
     """
     Search for total in the database based on the given searchVector and domain.
     """
@@ -69,7 +69,7 @@ def embedding_search_total(searchVector, domain):
         '$vectorSearch': {
         'index': 'vector_index', 
         'path': 'plot_embedding', 
-        'queryVector': searchVector, 
+        'queryVector': search_vector, 
         'numCandidates': 150, 
         'limit': 1
         }
@@ -132,7 +132,7 @@ def embedding_search_info(search_vector, domain, limit=100):
     
     return info_funtion
 
-def embedding_search_action(searchVector):
+def embedding_search_action(search_vector):
     """
     Search for action in the database based on the given searchVector.
     """
@@ -141,7 +141,7 @@ def embedding_search_action(searchVector):
         '$vectorSearch': {
         'index': 'vector_index', 
         'path': 'plot_embedding', 
-        'queryVector': searchVector, 
+        'queryVector': search_vector, 
         'numCandidates': 150, 
         'limit': 1
         }

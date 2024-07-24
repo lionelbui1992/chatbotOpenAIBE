@@ -1,36 +1,21 @@
-import json
-
-from bson import ObjectId
-from flask_jwt_extended import get_jwt_identity
+from core.domain import DomainObject
 from core.openai import create_completion
-from db import collection_embedded_server, collection_attribute
+from db import collection_spreadsheets
 
-def create_user_instructions(domain: str) -> str:
+def create_user_instructions(domain: DomainObject) -> str:
     """
     Get user instructions
     """
-    current_user_id = get_jwt_identity()
     avaible_title: list = []
     example_data1 = ''
     example_data2 = ''
     example_data3 = ''
     example_data4 = ''
     example_data5 = ''
-    attribute_aggregate_result = collection_attribute.aggregate([
-        {
-            '$match': {
-                '_id': ObjectId(current_user_id)
-            }
-        }, {
-            '$project': {
-                'title': 1, 
-                'column_index': 1, 
-                'domain': 1
-            }
-        }
-    ])
-    # get random 3 data from collection_embedded_server
-    search_result = get_random_embedded_data(domain=domain, number_of_data=1)
+
+
+    # get random 3 data from collection_spreadsheets
+    search_result = get_random_spreadsheet_data(domain, number_of_data=1)
     for result_item in search_result:
         # message type is dict
         # set '-' if the value is empty
@@ -55,8 +40,8 @@ def create_user_instructions(domain: str) -> str:
 
     #     example_data.append(result_item)
     # all_example_data = ', '.join([json.dumps(data) for data in example_data])
-    for message in attribute_aggregate_result:
-        avaible_title.append(message['title'])
+    for title in domain.columns:
+        avaible_title.append(title)
     all_title = ', '.join([f'"{title}"' for title in avaible_title])
     instruction_prompt = f'''You are tasked with managing a table with the following structure: {all_title}.
 
@@ -112,7 +97,7 @@ Response:
         {{
             "column_title": "{example_data4}",
             "condition": "equals",
-            "value": "{example_data4}"
+            "value": "{example_data5}"
         }}
     ],
     "column_title": "",
@@ -171,26 +156,21 @@ def get_analysis_input_action(input_text: str, domain: str):
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     return message
 
-def get_random_embedded_data(domain: str, number_of_data: int) -> list:
+def get_random_spreadsheet_data(domain: DomainObject, number_of_data: int) -> list:
     """
     Get random data from collection_embedded_server
     """
-    return collection_embedded_server.aggregate([
+    return collection_spreadsheets.aggregate([
         {
             '$match': {
-                'domain': domain
+                'domain': domain.name
             },
         }, {
             '$project': {
                 '_id': 0,
-                'plot': 0,
-                'plot_embedding': 0,
                 'type': 0,
                 'row_index': 0,
-                'column_count': 0,
                 'domain': 0,
-                'title': 0,
-                'header_column': 0
             }
         }, {
             '$sample': {
