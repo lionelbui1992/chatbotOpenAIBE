@@ -2,7 +2,7 @@ from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject
 from core.google_sheet import get_google_sheets_data, import_google_sheets_data, pull_google_sheets_data, get_gspread_client
-from core.input_actions import create_user_instructions
+from core.input_actions import create_domain_instructions
 from db import collection_users
 from db import collection_domain
 from bson.objectid import ObjectId
@@ -84,7 +84,7 @@ def set_user_settings(request):
                 import_google_sheets_result = import_google_sheets_data(domain, rows)
                 #  rebuild instructions
 
-                instruction_prompt = create_user_instructions(domain)
+                instruction_prompt = create_domain_instructions(domain)
                 print('instruction_prompt', instruction_prompt)
 
                 response_message['message'] = import_google_sheets_result['message']
@@ -167,7 +167,7 @@ def set_user_setting_google(request):
                 import_google_sheets_result = import_google_sheets_data(domain, rows)
                 #  rebuild instructions
 
-                instruction_prompt = create_user_instructions(domain)
+                instruction_prompt = create_domain_instructions(domain)
                 print('instruction_prompt', instruction_prompt)
 
                 response_message['message'] = import_google_sheets_result['message']

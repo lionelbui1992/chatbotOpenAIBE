@@ -27,7 +27,8 @@ def create_completion(messages: list):
     """
     completions = current_app.openAIClient.chat.completions.create(
         model = current_app.config['OPENAI_MODEL'],
-        messages = messages
+        messages = messages,
+        max_tokens = 1500,
     )
     print('::::::::::::::::::::::::::::::::::::::::::::::')
     print('Create completetions: ', completions.usage.total_tokens, ' tokens, ', messages)

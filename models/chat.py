@@ -1,6 +1,7 @@
 from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
+from core.domain import DomainObject
 from core.google_sheet import append_google_sheet_column, append_google_sheet_row, update_google_sheet_data
 from core.input_actions import get_analysis_input_action
 from core.openai import create_completion, create_embedding
@@ -172,17 +173,97 @@ def get_chat_completions(request):
     """
     Get the chat completions based on the given request.
     """
-    # verify the user
+    # ===================== End Instructions ========================================
+    # Input text -> AI -> RAG -> (JSON) -> Google sheet action/ summary collection/ get information -> RAG -> output messages
+    # ===================== Verify user =============================================
     current_user_id = get_jwt_identity()
-    # get the current user include user settings
     current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
+    # ===================== End Verify user =========================================
 
     if not current_user:
         return {"error": "Invalid user ID or token"}
 
+    # ===================== Input text ==============================================
+    data            = request.get_json()
+    domain          = DomainObject.load(current_user['domain'])
+    input_messages  = data.get('messages', [])
 
-    data = request.get_json()
-    input_messages = data.get('messages', [])
+    if not input_messages:
+        return jsonify({"error": "No messages provided"})
+    
+    # get latest message content text
+    input_text      = input_messages[-1].get('content', "")[0].get('text', "")
+    # set first item content text from domain instructions
+    input_messages[0]['content'][0]['text'] = domain.instructions
+
+    # ===================== End Input text ==========================================
+
+
+    # ===================== AI Analysis =============================================
+    action_info = None
+    try:
+        action_completion = create_completion(messages=input_messages)
+        action_info = json.loads(action_completion.choices[0].message.content)
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('Action analysis: ', action_info)
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    except Exception as e:
+        # this step can be skipped
+        print(':::::::::::ERROR - get_analysis_input_action ', str(e))
+        # assistant_message = {
+        #     "role": "assistant",
+        #     "content": "Sorry, I can't analyze the action, please try again!"
+        # }
+        # input_messages.append(assistant_message)
+    # ===================== End AI Analysis =========================================
+
+
+    # ===================== RAG =====================================================
+    if action_info:
+        action = action_info.get('action', 'None')
+        print('action: ', action)
+        # "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information"
+        if action == 'Add row':
+            print('>>>>>>>>>>>>>>>>>>>> "Add row"')
+        elif action == 'Add column':
+            print('>>>>>>>>>>>>>>>>>>>> "Add column"')
+        elif action == 'Delete row':
+            print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
+        elif action == 'Delete column':
+            print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
+        elif action == 'Edit cell':
+            print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
+        elif action == 'Get summary':
+            print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
+        elif action == 'Get information':
+            print('>>>>>>>>>>>>>>>>>>>> "Get information"')
+        else:
+            # no action, just chat message
+            assistant_message = {
+                "role": "assistant",
+                "content": action_info.get('message')
+            }
+            # input_messages.append(assistant_message)
+            print('>>>>>>>>>>>>>>>>>>>> "None"')
+
+    # ===================== END RAG =================================================
+
+
+
+    # ===================== End Instructions ========================================
+    completion_dict = action_completion.to_dict()
+
+    # for choice in completion_dict['choices']:
+    #     choice['message'] = choice['message']
+
+    # return the JSON string
+    return completion_dict
     messages = []
     # message only get latest item from input_messages
 
