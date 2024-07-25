@@ -1,10 +1,12 @@
 from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject
-from core.google_sheet import get_google_sheets_data, import_google_sheets_data, pull_google_sheets_data, get_gspread_client
+from core.google_sheet import import_google_sheets_data, pull_google_sheets_data, get_gspread_client
 from core.input_actions import create_domain_instructions
-from db import collection_users
-from db import collection_domain
+
+from db import collection_users, collection_spreadsheets
+from db import truncate_collection
+
 from bson.objectid import ObjectId
 
 def get_user_settings():
@@ -79,6 +81,9 @@ def set_user_settings(request):
                 column_titles = list(rows[0].keys())
                 column_titles = [title for title in column_titles if title]
                 domain.columns = column_titles
+
+                # remove old data
+                truncate_collection(collection_spreadsheets, domain.name)
 
                 # import data to db
                 import_google_sheets_result = import_google_sheets_data(domain, rows)
@@ -162,6 +167,9 @@ def set_user_setting_google(request):
                 column_titles = list(rows[0].keys())
                 column_titles = [title for title in column_titles if title]
                 domain.columns = column_titles
+
+                # remove old data
+                truncate_collection(collection_spreadsheets, domain.name)
 
                 # import data to db
                 import_google_sheets_result = import_google_sheets_data(domain, rows)

@@ -63,13 +63,7 @@ Your responses should always be in JSON format following this template:
     "do_action": {action_string} or "None" if not applicable,
     "action_status": "ready_to_process" if ready to process the user input do_action, "missing_data" if missing cell data or more information is needed, otherwise leave as "None",
     "message": if action_status is "missing_data", provide the missing data information, otherwise leave your chat response,
-    "conditions": [
-        {{
-            "column_title": column title value,
-            "condition": same as mongodb query operators,
-            "value": value to compare to
-        }}
-    ] or [] if not applicable,
+    "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
     "column_values": "list of new column title or get information column values", [] if not applicable,
     "value_to_replace": "cell new value", "" if not applicable,
     "row_values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
@@ -87,7 +81,7 @@ Response:
     "do_action": "Add row",
     "action_status": "ready_to_process",
     "message": "Row added successfully.",
-    "conditions": [],
+    "mongodb_condition_object": {{}},
     "column_values": [],
     "value_to_replace": "",
     "row_values": [{{{example_data2}}}]
@@ -99,13 +93,7 @@ Response:
     "do_action": "Delete row",
     "action_status": "ready_to_process",
     "message": "Row deleted successfully.",
-    "conditions": [
-        {{
-            "column_title": "{example_data4}",
-            "condition": "equals",
-            "value": "{example_data5}"
-        }}
-    ],
+    "mongodb_condition_object": "{{"{example_data4}": "{example_data5}"}}",
     "column_values": [],
     "value_to_replace": "",
     "row_values": []
@@ -120,7 +108,7 @@ Response:
     "do_action": "None",
     "action_status": "missing_data",
     "message": "Please provide the {example_data3} of the row where the {example_data4} value is '{example_data5}'.",
-    "conditions": [],
+    "mongodb_condition_object": {{}},
     "column_values": [],
     "value_to_replace": "",
     "row_values": []

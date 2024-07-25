@@ -1,11 +1,12 @@
+from typing import Collection
 from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, append_google_sheet_row, get_gspread_client, update_google_sheet_data
+from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_gspread_client, update_google_sheet_data
 from core.input_actions import get_analysis_input_action
 from core.openai import create_completion, create_embedding
-from db import collection_embedded_server, collection_action, collection_attribute, collection_users
+from db import collection_embedded_server, collection_action, collection_attribute, collection_users, collection_spreadsheets
 
 import json
 
@@ -231,33 +232,42 @@ def get_chat_completions(request):
         action_do               = action_info.get('do_action', 'None') # 'Add row', Add column, Delete row, Delete column, Edit cell, Get summary, Get information, None
         action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
         action_message          = action_info.get('message', '')
-        action_conditions       = action_info.get('conditions', [])
-        action_column_values  = action_info.get('column_values', [])
+        action_conditions:dict  = action_info.get('mongodb_condition_object', {})
+        action_column_values    = action_info.get('column_values', [])
         action_value_to_replace = action_info.get('value_to_replace', '')
         action_row_values       = action_info.get('row_values', [])
+        google_access_token     = current_user['settings']['googleAccessToken']
+        google_selected_details = domain.googleSelectedDetails
 
 
         # "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information"
         if action_do == 'Add row' and action_status == 'ready_to_process':
             #  call append_google_sheet_row
-            google_access_token     = current_user['settings']['googleAccessToken']
-            google_selected_details = domain.googleSelectedDetails
             gspread_client          = get_gspread_client(google_access_token)
             print(action_row_values)
-            for index, new_item in enumerate(action_row_values):
-                new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
+            SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
+            sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
+            try:
+                # get values from action_row_values (not include key)
+                values = [list(row.values()) for row in action_row_values]
+                
+                sheet.append_rows(values)
+                temp_messages.append("Added {total_rows} rows".format(total_rows=len(values)))
+            except Exception as e:
+                temp_messages.append("Failed to add rows")
+                print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
+            # for index, new_item in enumerate(action_row_values):
+            #     new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
 
-                print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item_string)
-                try:
-                    add_row_response = append_google_sheet_row(google_selected_details, gspread_client, new_item)
-                    temp_messages.append(f"{index + 1}. {new_item_string} -> Added.")
-                except Exception as e:
-                    temp_messages.append(f"{index + 1}. {new_item_string} -> Failed.")
-                    print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
+            #     print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item_string)
+            #     try:
+            #         add_row_response = append_google_sheet_row(google_selected_details, gspread_client, new_item)
+            #         temp_messages.append(f"{index + 1}. {new_item_string} -> Added.")
+            #     except Exception as e:
+            #         temp_messages.append(f"{index + 1}. {new_item_string} -> Failed.")
+            #         print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
         if action_do == 'Add column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Add column"')
-            google_access_token     = current_user['settings']['googleAccessToken']
-            google_selected_details = domain.googleSelectedDetails
             gspread_client          = get_gspread_client(google_access_token)
             for index, column_title in enumerate(action_column_values):
                 try:
@@ -266,8 +276,31 @@ def get_chat_completions(request):
                 except Exception as e:
                     temp_messages.append(f"{index + 1}. Failed to add new column: {column_title}\n{add_column_response.message}")
                     print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
-        if action_do == 'Delete row':
+        if action_do == 'Delete row' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
+            gspread_client          = get_gspread_client(google_access_token)
+            # get row index from collection_spreadsheets from action_conditions
+            # add domain filter
+            print(action_conditions, type(action_conditions))
+            action_conditions['domain'] = current_user['domain']
+
+            print(action_conditions)
+            query_result = list(collection_spreadsheets.find(action_conditions))
+            # if no row found, return message
+            if len(list(query_result)) == 0:
+                temp_messages.append("No row found")
+            row_indexes = []
+            for row in query_result:
+                row_indexes.append(row['row_index'])
+            total_rows = len(row_indexes)
+            delete_google_sheet_row(google_selected_details, gspread_client, row_indexes)
+            try:
+                # delete row from google sheet, index start from 1, index 0 is column heading
+                temp_messages.append(f"Deleted {total_rows} rows")
+            except Exception as e:
+                print('>>>>>>>>>>>>>>>>>>>> "Delete {total_rows} rows" failed ', e)
+
+
         if action_do == 'Delete column':
             print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
         if action_do == 'Edit cell':

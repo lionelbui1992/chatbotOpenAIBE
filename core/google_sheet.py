@@ -35,9 +35,8 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
         service = build('sheets', 'v4', credentials=creds)
 
         # for detail in google_selected_details:
-        detail = google_selected_details
-        sheet_id = detail['sheetId']
-        sheet_name = detail['title']
+        sheet_id = google_selected_details['sheetId']
+        sheet_name = google_selected_details['title']
 
         # Read the first 100 rows from the sheet
         range_name = f'{sheet_name}!A1:AE999'
@@ -88,15 +87,17 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
         error_message = str(e)
         return jsonify({'message': 'An error occurred while retrieving data: {error_message}'})
 
-def pull_google_sheets_data(googleSelectedDetails: dict, gspread_client: gspread.Client) -> dict:
+def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspread.Client) -> dict:
     """
     Pull data from Google Sheets and store in MongoDB
     """
-        
+
+    sheet_id = google_selected_details['sheetId']
+
     try:
         # open Google Sheet use URL or ID
-        SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=googleSelectedDetails['sheetId'])
-        sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(googleSelectedDetails['title'])
+        SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
+        sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
         # get all data from Google Sheet
         return {
@@ -240,6 +241,7 @@ def update_google_sheet_data(current_user, values: str, column_index: number, ro
         return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_row(google_selected_details: dict, gspread_client: gspread.Client, new_item) -> dict:
+    sheet_id = google_selected_details['sheetId']
     SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
     sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
@@ -248,9 +250,37 @@ def append_google_sheet_row(google_selected_details: dict, gspread_client: gspre
     return append_response
 
 def append_google_sheet_column(google_selected_details: dict, gspread_client: gspread.Client, column_name: str) -> dict:
+    sheet_id = google_selected_details['sheetId']
     SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
     sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
     # append new column to the last column of first row
     last_column = len(sheet.row_values(1))
     return sheet.update_cell(1, last_column + 1, column_name)
+
+
+def delete_google_sheet_row(google_selected_details: dict, gspread_client: gspread.Client, row_indexes: list) -> dict:
+    """Delete a row from Google Sheet"""
+    sheet_id = google_selected_details['sheetId']
+    SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
+    sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
+
+    # build the batch update request
+    requests = []
+    for row_index in row_indexes:
+        requests.append({
+            "deleteDimension": {
+                "range": {
+                    "sheetId": sheet.id,
+                    "dimension": "ROWS",
+                    "startIndex": row_index + 1, # index 0 is column header
+                    "endIndex": row_index + 2
+                }
+            }
+        })
+    # execute the batch update request
+    body = {
+        "requests": requests
+    }
+    print(body)
+    return sheet.client.batch_update(sheet.id, body)
