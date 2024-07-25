@@ -6,6 +6,16 @@ def create_domain_instructions(domain: DomainObject) -> str:
     """
     Get user instructions
     """
+    actions = [
+        'Add row',
+        'Add column',
+        'Delete row',
+        'Delete column',
+        'Edit cell',
+        'Get summary',
+        'Get information'
+    ]
+    action_string = ', '.join([f'"{action}"' for action in actions])
     avaible_title: list = []
     example_data1 = ''
     example_data2 = ''
@@ -50,19 +60,19 @@ In each interaction, determine the appropriate action, the conditions if needed,
 Your responses should always be in JSON format following this template:
 
 {{
-    "status": "skip" if conversation is not applicable, "ready_to_process" if ready to process the user input action, "missing_data" if add new widh missing cell data or more information is needed.
-    "message": if status is "missing_data", provide the missing data information, otherwise leave your chat response,
-    "action": "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information" if not applicable,
+    "do_action": {action_string} or "None" if not applicable,
+    "action_status": "ready_to_process" if ready to process the user input do_action, "missing_data" if missing cell data or more information is needed, otherwise leave as "None",
+    "message": if action_status is "missing_data", provide the missing data information, otherwise leave your chat response,
     "conditions": [
         {{
-            "column_title": "column title value", "" if not applicable,
-            "condition": "equals", "not equals", "greater than", "less than", "greater than or equal to", "less than or equal to", "contains", "not contains", "starts with", "ends with", "" if not applicable,
-            "value": "value to compare to", "" if not applicable
+            "column_title": column title value,
+            "condition": same as mongodb query operators,
+            "value": value to compare to
         }}
     ] or [] if not applicable,
-    "column_title": "column title value", [] if not applicable,
-    "value_to_replace": "row new value", "" if not applicable,
-    "values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
+    "column_selector": "column title values", [] if not applicable,
+    "value_to_replace": "cell new value", "" if not applicable,
+    "row_values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
 }}
 
 Steps to follow:
@@ -74,21 +84,21 @@ Steps to follow:
 User: "Add a new row with {example_data1}"
 Response:
 {{
-    "status": "ready_to_process",
-    "message": "",
-    "action": "Add row",
+    "do_action": "Add row",
+    "action_status": "ready_to_process",
+    "message": "Row added successfully.",
     "conditions": [],
-    "column_title": [],
+    "column_selector": [],
     "value_to_replace": "",
-    "values": [{{{example_data2}}}]
+    "row_values": [{{{example_data2}}}]
 }}
 
 User: "Delete the row with {example_data4} {example_data5}"
 Response:
 {{
-    "status": "ready_to_process",
-    "message": "",
-    "action": "Delete row",
+    "do_action": "Delete row",
+    "action_status": "ready_to_process",
+    "message": "Row deleted successfully.",
     "conditions": [
         {{
             "column_title": "{example_data4}",
@@ -96,27 +106,27 @@ Response:
             "value": "{example_data5}"
         }}
     ],
-    "column_title": [],
+    "column_selector": [],
     "value_to_replace": "",
-    "values": []
+    "row_values": []
 }}
 
-If additional details are needed for an action, return the status "missing_data" with a message indicating the missing information.
+If additional details are needed for an action, return the action_status "missing_data" with a message indicating the missing information.
 For instance:
 
 User: "Update the {example_data3} for the row where {example_data4} is '{example_data5}'"
 Response:
 {{
-    "status": "missing_data",
+    "do_action": "None",
+    "action_status": "missing_data",
     "message": "Please provide the {example_data3} of the row where the {example_data4} value is '{example_data5}'.",
-    "action": "None",
     "conditions": [],
-    "column_title": [],
+    "column_selector": [],
     "value_to_replace": "",
-    "values": []
+    "row_values": []
 }}
 
-Ask users to provide all details for each action to avoid "missing_data" status where possible. The "values" must be reordered if the column titles are not in the correct order.
+Ask users to provide all details for each action to avoid "missing_data" status where possible. The "row_values" must be list of {{key:value}} and reordered if the column titles are not in the correct order.
 
 Your response should only be in JSON format'''
     return instruction_prompt

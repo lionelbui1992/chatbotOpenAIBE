@@ -2,7 +2,7 @@ from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, append_google_sheet_row, update_google_sheet_data
+from core.google_sheet import append_google_sheet_column, append_google_sheet_row, get_gspread_client, update_google_sheet_data
 from core.input_actions import get_analysis_input_action
 from core.openai import create_completion, create_embedding
 from db import collection_embedded_server, collection_action, collection_attribute, collection_users
@@ -203,12 +203,13 @@ def get_chat_completions(request):
     action_info = None
     try:
         action_completion = create_completion(messages=input_messages)
+        # convert response to dictionary
         action_info = json.loads(action_completion.choices[0].message.content)
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('Action analysis: ', action_info)
+        print('Action analysis: ', action_info, type(action_info))
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -226,32 +227,45 @@ def get_chat_completions(request):
 
     # ===================== RAG =====================================================
     if action_info:
-        action = action_info.get('action', 'None')
-        print('action: ', action)
-        # "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information"
-        if action == 'Add row':
-            print('>>>>>>>>>>>>>>>>>>>> "Add row"')
-        elif action == 'Add column':
-            print('>>>>>>>>>>>>>>>>>>>> "Add column"')
-        elif action == 'Delete row':
-            print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
-        elif action == 'Delete column':
-            print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
-        elif action == 'Edit cell':
-            print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
-        elif action == 'Get summary':
-            print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
-        elif action == 'Get information':
-            print('>>>>>>>>>>>>>>>>>>>> "Get information"')
-        else:
-            # no action, just chat message
-            assistant_message = {
-                "role": "assistant",
-                "content": action_info.get('message')
-            }
-            # input_messages.append(assistant_message)
-            print('>>>>>>>>>>>>>>>>>>>> "None"')
+        temp_messages = []
+        action_do               = action_info.get('do_action', 'None') # 'Add row', Add column, Delete row, Delete column, Edit cell, Get summary, Get information, None
+        action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
+        action_message          = action_info.get('message', '')
+        action_conditions       = action_info.get('conditions', [])
+        action_column_selector  = action_info.get('column_selector', [])
+        action_value_to_replace = action_info.get('value_to_replace', '')
+        action_row_values       = action_info.get('row_values', [])
 
+
+        # "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information"
+        if action_do == 'Add row' and action_status == 'ready_to_process':
+            #  call append_google_sheet_row
+            google_access_token     = current_user['settings']['googleAccessToken']
+            google_selected_details = domain.googleSelectedDetails
+            gspread_client          = get_gspread_client(google_access_token)
+            print(action_row_values)
+            for index, new_item in enumerate(action_row_values):
+                new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
+
+                print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item_string)
+                try:
+                    add_row_response = append_google_sheet_row(google_selected_details, gspread_client, new_item)
+                    temp_messages.append(f"{index + 1}. {new_item_string} -> Added.")
+                except Exception as e:
+                    temp_messages.append(f"{index + 1}. {new_item_string} -> Failed.")
+                    print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
+        if action_do == 'Add column':
+            print('>>>>>>>>>>>>>>>>>>>> "Add column"')
+        if action_do == 'Delete row':
+            print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
+        if action_do == 'Delete column':
+            print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
+        if action_do == 'Edit cell':
+            print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
+        if action_do == 'Get summary':
+            print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
+        if action_do == 'Get information':
+            print('>>>>>>>>>>>>>>>>>>>> "Get information"')
     # ===================== END RAG =================================================
 
 
@@ -259,8 +273,10 @@ def get_chat_completions(request):
     # ===================== End Instructions ========================================
     completion_dict = action_completion.to_dict()
 
-    # for choice in completion_dict['choices']:
-    #     choice['message'] = choice['message']
+    if temp_messages:
+        action_message = action_message + "\n" + "\n".join(temp_messages)
+        # need full json data, will be process in short time
+        completion_dict['choices'][0]['message']['content'] = action_message
 
     # return the JSON string
     return completion_dict
