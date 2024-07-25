@@ -232,7 +232,7 @@ def get_chat_completions(request):
         action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
         action_message          = action_info.get('message', '')
         action_conditions       = action_info.get('conditions', [])
-        action_column_selector  = action_info.get('column_selector', [])
+        action_column_values  = action_info.get('column_values', [])
         action_value_to_replace = action_info.get('value_to_replace', '')
         action_row_values       = action_info.get('row_values', [])
 
@@ -254,8 +254,18 @@ def get_chat_completions(request):
                 except Exception as e:
                     temp_messages.append(f"{index + 1}. {new_item_string} -> Failed.")
                     print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
-        if action_do == 'Add column':
+        if action_do == 'Add column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Add column"')
+            google_access_token     = current_user['settings']['googleAccessToken']
+            google_selected_details = domain.googleSelectedDetails
+            gspread_client          = get_gspread_client(google_access_token)
+            for index, column_title in enumerate(action_column_values):
+                try:
+                    add_column_response = append_google_sheet_column(google_selected_details, gspread_client, column_title)
+                    temp_messages.append(f"{index + 1}. Added new column: {column_title}")
+                except Exception as e:
+                    temp_messages.append(f"{index + 1}. Failed to add new column: {column_title}\n{add_column_response.message}")
+                    print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
         if action_do == 'Delete row':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
         if action_do == 'Delete column':

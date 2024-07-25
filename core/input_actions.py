@@ -70,7 +70,7 @@ Your responses should always be in JSON format following this template:
             "value": value to compare to
         }}
     ] or [] if not applicable,
-    "column_selector": "column title values", [] if not applicable,
+    "column_values": "list of new column title or get information column values", [] if not applicable,
     "value_to_replace": "cell new value", "" if not applicable,
     "row_values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
 }}
@@ -88,7 +88,7 @@ Response:
     "action_status": "ready_to_process",
     "message": "Row added successfully.",
     "conditions": [],
-    "column_selector": [],
+    "column_values": [],
     "value_to_replace": "",
     "row_values": [{{{example_data2}}}]
 }}
@@ -106,7 +106,7 @@ Response:
             "value": "{example_data5}"
         }}
     ],
-    "column_selector": [],
+    "column_values": [],
     "value_to_replace": "",
     "row_values": []
 }}
@@ -121,7 +121,7 @@ Response:
     "action_status": "missing_data",
     "message": "Please provide the {example_data3} of the row where the {example_data4} value is '{example_data5}'.",
     "conditions": [],
-    "column_selector": [],
+    "column_values": [],
     "value_to_replace": "",
     "row_values": []
 }}
