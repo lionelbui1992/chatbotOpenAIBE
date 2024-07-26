@@ -364,6 +364,15 @@ def get_chat_completions(request):
 
         if action_do == 'Get summary' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
+            # add domain filter
+            action_conditions['domain'] = current_user['domain']
+            infomation_result = collection_spreadsheets.count_documents(action_conditions)
+            if infomation_result > 1:
+                temp_messages.append(f"Found {infomation_result} rows")
+            elif infomation_result == 1:
+                temp_messages.append(f"Found {infomation_result} row")
+            else:
+                temp_messages.append("No row found")
         if action_do == 'Get information' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Get information"')
             # add domain filter
@@ -376,6 +385,7 @@ def get_chat_completions(request):
                 info.pop('row_index')
                 row_data = ', ' . join([f"{key}: {value}" for key, value in info.items()])
                 temp_messages.append('{}. {}'.format(index + 1, row_data))
+
     # ===================== END RAG =================================================
 
 
