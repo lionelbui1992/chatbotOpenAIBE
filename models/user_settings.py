@@ -87,13 +87,22 @@ def set_user_settings(request):
                 truncate_collection(collection_spreadsheets, domain.name)
 
                 # import data to db
-                import_google_sheets_result = import_google_sheets_data(domain, rows)
-                #  rebuild instructions
+                try:
+                    import_google_sheets_data(domain, rows)
+                    #  rebuild instructions
 
-                instruction_prompt = create_domain_instructions(domain)
-                print('instruction_prompt', instruction_prompt)
-
-                response_message['message'] = import_google_sheets_result['message']
+                    instruction_prompt = create_domain_instructions(domain)
+                    print('instruction_prompt', instruction_prompt)
+                    if (len(rows) > 1):
+                        response_message['message'] = 'From spreadsheet, imported ' + str(len(rows) - 1) + ' rows imported'
+                    elif len(rows) == 1:
+                        response_message['message'] = 'From spreadsheet, imported ' + str(len(rows)) + ' row imported'
+                    else:
+                        response_message['message'] = 'No data imported'
+                except Exception as e:
+                    print(':::::::::::ERROR - import_google_sheets_data ', str(e))
+                    response_message['status'] = "error"
+                    response_message['message'] = "An error occurred while importing data" + str(e)
             else:
                 # ===================== pull data error =========================================
                 response_message['message'] = pull_google_response['message']
@@ -174,13 +183,24 @@ def set_user_setting_google(request):
                 truncate_collection(collection_spreadsheets, domain.name)
 
                 # import data to db
-                import_google_sheets_result = import_google_sheets_data(domain, rows)
-                #  rebuild instructions
+                try:
+                    import_google_sheets_data(domain, rows)
 
-                instruction_prompt = create_domain_instructions(domain)
-                print('instruction_prompt', instruction_prompt)
+                    #  rebuild instructions
 
-                response_message['message'] = import_google_sheets_result['message']
+                    instruction_prompt = create_domain_instructions(domain)
+                    print('instruction_prompt', instruction_prompt)
+
+                    if (len(rows) > 1):
+                        response_message['message'] = 'From spreadsheet, imported ' + str(len(rows) - 1) + ' rows imported'
+                    elif len(rows) == 1:
+                        response_message['message'] = 'From spreadsheet, imported ' + str(len(rows)) + ' row imported'
+                    else:
+                        response_message['message'] = 'No data imported'
+                except Exception as e:
+                    print(':::::::::::ERROR - import_google_sheets_data ', str(e))
+                    response_message['status'] = "error"
+                    response_message['message'] = "An error occurred while importing data" + str(e)
             else:
                 # ===================== pull data error =========================================
                 response_message['message'] = pull_google_response['message']

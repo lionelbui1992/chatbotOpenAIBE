@@ -3,10 +3,10 @@ from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_credentials, get_gspread_client, get_service, update_google_sheet_data, update_many_row_value
-from core.input_actions import get_analysis_input_action
+from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_credentials, get_gspread_client, get_service, import_google_sheets_data, pull_google_sheets_data, update_google_sheet_data, update_many_row_value
+from core.input_actions import create_domain_instructions, get_analysis_input_action
 from core.openai import create_completion, create_embedding
-from db import collection_embedded_server, collection_action, collection_attribute, collection_users, collection_spreadsheets
+from db import collection_embedded_server, collection_action, collection_attribute, collection_users, collection_spreadsheets, truncate_collection
 
 import json
 
@@ -188,6 +188,7 @@ def get_chat_completions(request):
     data            = request.get_json()
     domain          = DomainObject.load(current_user['domain'])
     input_messages  = data.get('messages', [])
+    temp_messages   = []
 
     if not input_messages:
         return jsonify({"error": "No messages provided"})
@@ -228,13 +229,12 @@ def get_chat_completions(request):
 
     # ===================== RAG =====================================================
     if action_info:
-        temp_messages = []
         action_do               = action_info.get('do_action', 'None') # 'Add row', Add column, Delete row, Delete column, Edit cell, Get summary, Get information, None
         action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
         action_message          = action_info.get('message', '')
         action_conditions:dict  = action_info.get('mongodb_condition_object', {})
         action_column_values    = action_info.get('column_values', [])
-        action_replace_query = action_info.get('replace_query', '')
+        action_replace_query    = action_info.get('replace_query', '')
         action_row_values       = action_info.get('row_values', [])
         google_access_token     = current_user['settings']['googleAccessToken']
         google_selected_details = domain.googleSelectedDetails
@@ -262,16 +262,8 @@ def get_chat_completions(request):
             except Exception as e:
                 temp_messages.append("Failed to add rows")
                 print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
-            # for index, new_item in enumerate(action_row_values):
-            #     new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
-
-            #     print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item_string)
-            #     try:
-            #         add_row_response = append_google_sheet_row(google_selected_details, gspread_client, new_item)
-            #         temp_messages.append(f"{index + 1}. {new_item_string} -> Added.")
-            #     except Exception as e:
-            #         temp_messages.append(f"{index + 1}. {new_item_string} -> Failed.")
-            #         print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
+            finally:
+                chat_action_callback(domain, gspread_client)
         if action_do == 'Add column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Add column"')
             for index, column_title in enumerate(action_column_values):
@@ -281,6 +273,7 @@ def get_chat_completions(request):
                 except Exception as e:
                     temp_messages.append(f"{index + 1}. Failed to add new column: {column_title}\n{add_column_response.message}")
                     print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
+            chat_action_callback(domain, gspread_client)
         if action_do == 'Delete row' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
             sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
@@ -307,7 +300,7 @@ def get_chat_completions(request):
                 temp_messages.append(f"Deleted {total_rows} rows")
             except Exception as e:
                 print('>>>>>>>>>>>>>>>>>>>> "Delete {total_rows} rows" failed ', e)
-
+            chat_action_callback(domain, gspread_client)
 
         if action_do == 'Delete column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
@@ -317,6 +310,7 @@ def get_chat_completions(request):
             action_conditions['domain'] = current_user['domain']
             print(action_conditions)
             temp_messages.append("Skip action...")
+            chat_action_callback(domain, gspread_client)
 
         if action_do == 'Edit cell':
             print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
@@ -340,7 +334,10 @@ def get_chat_completions(request):
                 for row in query_result:
                     print(row['row_index'], row['Projects'])
                     row_ids.append(row['_id'])
-
+                print(type(action_replace_query), action_replace_query)
+                # if action_replace_query is not dict, convert to dict
+                if isinstance(action_replace_query, str):
+                    action_replace_query = json.loads(action_replace_query)
                 update_result = collection_spreadsheets.update_many(action_conditions, action_replace_query)
                 # get new values
                 print('db update_result: ', update_result)
@@ -360,6 +357,8 @@ def get_chat_completions(request):
             except Exception as e:
                 print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', e)
                 temp_messages.append("Failed to update cell")
+            finally:
+                chat_action_callback(domain, gspread_client)
 
 
         if action_do == 'Get summary' and action_status == 'ready_to_process':
@@ -378,6 +377,9 @@ def get_chat_completions(request):
             # add domain filter
             action_conditions['domain'] = current_user['domain']
             infomation_result = collection_spreadsheets.find(action_conditions)
+            # if no row found, return message
+            if len(list(infomation_result)) == 0:
+                temp_messages.append("No data found")
             for index, info in enumerate(infomation_result):
                 print('>>>>>>>>>>>>>>>>>>>> found info: ', info)
                 info.pop('_id')
@@ -400,177 +402,36 @@ def get_chat_completions(request):
 
     # return the JSON string
     return completion_dict
-    messages = []
-    # message only get latest item from input_messages
-
-    if not input_messages:
-        return jsonify({"error": "No messages provided"})
-    
-    # get latest message content text
-    latest_message = input_messages[-1].get('content', "")
-    input_text = latest_message[0].get('text', "")
-
-    # handle action
-    print('==================== HANDLE ACTIONS')
-    action_info =[]
-    target_action = ""
-    column_index = ""
-    print('>>>>>>>>>>>>>>>>>>>> analysis text for action')
-    try:
-        target_action = "has_action"
-        action_info = get_analysis_input_action(input_text=input_text, domain=current_user['domain'])
-        # Convert action_info string to dictionary
-        print('action_info: ', action_info)
-        action_info_dict = json.loads(action_info)
-
-        # Get the action, title, old_value, and new_value from the dictionary
-        action = action_info_dict.get('action', 'None')
-        column_title = action_info_dict.get('column_title', 'None')
-
-        if action != 'None':
-            # update google sheet data
-            old_value = action_info_dict.get('old_value', '')
-            new_value = action_info_dict.get('new_value', '')
-            new_items = action_info_dict.get('values', [])
-            column_index = -1
-            row_index = -1
-            if column_title != 'None':
-                # get column_index from collection_attribute
-                search_attribute = embedding_search_attribute(column_title, current_user['domain'])
-                # print('search_attribute: ', search_attribute)
-                for message in search_attribute:
-                    print('>>>>> found column: ', message.get('column_index', 0))
-                    column_index = message.get('column_index', -1)
-                    # if message['score'] > 0.8:
-                    #     column_index = message['column_index']
-                    #     column_name = chr(65 + column_index)
-            if action == 'Add row':
-                # update google sheet data
-                print('>>>>>>>>>>>>>>>>>>>> "Add row"')
-                # get latest row_index
-                if new_items != []:
-                    temp_message = ''
-                    # new_items is an array of items to be added
-                    for index, new_item in enumerate(new_items):
-                        print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item, type(new_item))
-                        new_item_string = ', '.join([f"{key}: {value}" for key, value in new_item.items()])
-
-                        print('>>>>>>>>>>>>>>>>>>>> "Add row" new_item: ', new_item_string)
-                        # new_item will be {'ID': '14', 'Projects': 'Citic', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'Citicpacific123#@!', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://www.citicpacific.com/en/', 'Comment': '', 'Polylang': 'TRUE'}, {}, {'ID': '30', 'Projects': 'GIBF', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': '', 'WP Version': '', 'Password': '5PYSO9tONhpfztggNyry(%uM', 'Login Email': 'cyrus@lolli.com.hk', 'Site Url': 'https://gibf-bio.com', 'Comment': 'There is a pending change of your email to cyrus@lolli.com.hk', 'Polylang': 'FALSE'}
-                        add_row_response = append_google_sheet_row(current_user, new_item)
-                        if add_row_response.status == 'success':
-                            temp_message += f"{index + 1}. {new_item_string} -> Added\n"
-                        else:
-                            temp_message += f"{index + 1}. {new_item_string} -> Failed\n"
-                    messages.append({"role": "system", "content": f"Added new row: {temp_message}"})
-                else:
-                    messages.append({"role": "system", "content": "No new row have been added"})
-            elif action == 'Add column':
-                # update google sheet data
-                print('>>>>>>>>>>>>>>>>>>>> "Add column"')
-                try:
-                    add_column_response = append_google_sheet_column(current_user, column_title)
-                    if add_column_response.status == 'success':
-                        messages.append({"role": "system", "content": f"Added new column: {column_title}"})
-                        print('>>>>>>>>>>>>>>>>>>>> "Add column" success')
-                    else:
-                        messages.append({"role": "system", "content": "Sorry, I can't add the new column, please try again! {add_column_response.message}"})
-                        print('>>>>>>>>>>>>>>>>>>>> "Add column" failed')
-                except Exception as e:
-                    print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
-                    messages.append({"role": "system", "content": "Sorry, I can't add the new column, please try again! {e}"})
-            else:
-                print('>>>>>>>>>>>>>>>>>>>> "Modify"')
-                # search for the row_index
-                sheet_result = collection_embedded_server.find({
-                    'domain': current_user['domain'],
-                    'plot': {'$elemMatch': {'$eq': old_value}}
-                })
-                if sheet_result:
-                    for message in sheet_result:
-                        row_index = message['row_index']
-                        print('>>>>>>>>>>>>>>>>>>>> found row: ', row_index)
-                if row_index != -1 and column_index != -1:
-                    update_google_sheet_data(current_user, new_value, column_index, row_index + 1)
-                    messages.append({"role": "system", "content": f"Information has been updated: {old_value} -> {new_value} at row {row_index + 1}, column {column_index}"})
-                else:
-                    messages.append({"role": "system", "content": "No information has been updated"})
-
-        else:
-            print('==================== NO ACTION')
-            target_action = "no_action"
-
-        print('>>>>>>>>>>>>>>>>>>>> end analysis text for action')
-        # update_data_to_db(_id, full_plot)
-    except Exception as e:
-        print('==================== ERROR HANDLE ACTIONS')
-        print(e)
-        messages.append({"role": "system", "content": "Sorry, I can't update the information, please try again!"})
-    print('==================== END HANDLE ACTIONS')
-    # end handle action
-    # print("target_action: ", target_action)
-    completion = []
-    print('>>>>>>>>>>>> show_messages', messages)
-    if target_action == "has_action":
-        completion = create_completion(messages)
-
-    try:
-        print('>>>>>>>>>>>> search server embedding')
-        # get the embedding
-        search_vector = embedding_function(input_text)
-        # run pipeline
-        aggregate_result    = embedding_search_info(search_vector, current_user['domain'], 5)
-        print("aggregate_result: ", aggregate_result)
-        header_column       = ""
-        score               = 0
-        full_plot           = ""
-        target_score       = 0 # target score to show message
-
-        for message in aggregate_result:
-            # title = message['title']
-            score = message['score']
-            print("message: ", message['title'])
-            print("score: ", score)
-
-            target_score = 1
-            index = 0
-            for value in message['plot']:
-                if value == "":
-                    value = ""
-                # check if value is not string, convert to string
-                if not isinstance(value, str):
-                    value = str(value)
-                
-                if index < len(message['header_column']):
-                    print(index)
-                    print(len(message['header_column']))
-                    header_column = message['header_column'][index] # index
-                else:
-                    header_column = ""
-
-                full_plot = full_plot + header_column + ":" + value + ", "
-                index += 1
-
-            messages.append({"role": "assistant", "content": full_plot })
-               
-    except Exception as e:
-        messages.append({"role": "system", "content": e.message})
-        print(e)
-
-    messages.append({"role": "user", "content":input_text})
-    
-    if(target_score == 0):
-        completion = create_completion(messages)
-    else:
-        messages.append({"role": "user", "content":"WITH ABOVE INFORMATIONS ONLY"})
-        completion = create_completion(messages)
-
-    completion_dict = completion.to_dict()
-
-    for choice in completion_dict['choices']:
-        choice['delta'] = choice['message']
-
-    # return the JSON string
-    return completion_dict
-    
    
+def chat_action_callback(domain, gspread_client):
+    """
+    Chat action callback - re import google sheet data
+    """
+    try:
+        # ===================== pull data ===============================================
+        pull_google_response = pull_google_sheets_data(domain.googleSelectedDetails, gspread_client)
+        if pull_google_response['status'] == 'success':
+            # ===================== pull data success =======================================
+            rows = pull_google_response['data']
+            # get column titles, remove empty keys
+            column_titles = list(rows[0].keys())
+            column_titles = [title for title in column_titles if title]
+            domain.columns = column_titles
+
+            # remove old data
+            truncate_collection(collection_spreadsheets, domain.name)
+
+            # import data to db
+            try:
+                import_google_sheets_data(domain, rows)
+                #  rebuild instructions
+
+                instruction_prompt = create_domain_instructions(domain)
+                print('instruction_prompt', instruction_prompt)
+            except Exception as e:
+                print(':::::::::::ERROR - import_google_sheets_data ', str(e))
+        else:
+            # ===================== pull data error =========================================
+            print(':::::::::::ERROR - pull_google_sheets_data ', pull_google_response['message'])
+    except Exception as e:
+        print(':::::::::::ERROR - pull_google_sheets_data ', str(e))

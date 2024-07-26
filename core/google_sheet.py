@@ -119,7 +119,7 @@ def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspre
         }
 
 
-def import_google_sheets_data(_domain, rows: list):
+def import_google_sheets_data(_domain, rows: list) -> dict:
     # ===================== Print log ===============================================
     if not rows:
         print(MESSAGE_CONSTANT['no_data_found'])
@@ -131,32 +131,14 @@ def import_google_sheets_data(_domain, rows: list):
 
 
     # ===================== Import to MongoDB =======================================
-    # get row by row
+    # modify the data before importing to MongoDB
+    # add domain, row_index to each row
     for index, row in enumerate(rows):
-        try:
-            print('>>>>>>>> Adding Data to MongoDB... ', row)
-            # if column key is empty, delete it
-            for key in list(row):
-                if not key:
-                    del row[key]
-                    print('>>>>>>>> Deleting empty column... ', key)
-            # import data to MongoDB
-            row['domain'] = _domain.name
-            row['row_index'] = index + 1
-            collection_spreadsheets.insert_one(row)
-        except Exception as e:
-            print(':::::::::::ERROR - import_google_sheets_data:::::::::::::', e)
-            return {
-                'status': 'error',
-                'message': 'An error occurred while importing data'
-            }
-    # ===================== End Import to MongoDB ===================================
+        row['domain'] = _domain.name
+        row['row_index'] = index + 1
+    # import all rows to mongodb
+    return collection_spreadsheets.insert_many(rows)
 
-
-    return {
-        'status': 'success',
-        'message': MESSAGE_CONSTANT['data_retrieved_and_printed_successfully']
-    }
 
 def import_heading_attributes(_domain, headers):
     try:
