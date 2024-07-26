@@ -329,53 +329,53 @@ def get_chat_completions(request):
 
             print(action_conditions)
 
-            # search for the row data:
-            query_result = list(collection_spreadsheets.find(action_conditions))
-            row_ids = []
-            row_values = []
-            # if no row found, return message
-            if len(list(query_result)) == 0:
-                temp_messages.append("No row found")
-            for row in query_result:
-                print(row['row_index'], row['Projects'])
-                row_ids.append(row['_id'])
+            try:
+                # search for the row data:
+                query_result = list(collection_spreadsheets.find(action_conditions))
+                row_ids = []
+                row_values = []
+                # if no row found, return message
+                if len(list(query_result)) == 0:
+                    temp_messages.append("No row found")
+                for row in query_result:
+                    print(row['row_index'], row['Projects'])
+                    row_ids.append(row['_id'])
 
-            update_result = collection_spreadsheets.update_many(action_conditions, action_replace_query)
-            # get new values
-            print('update_result: ', update_result)
-            temp_messages.append("Updated cell")
-            print(update_result.matched_count, update_result.modified_count)
-            # get new values
-            query_result = collection_spreadsheets.find({'_id': {'$in': row_ids}})
-            for row in query_result:
-                print('>>>>', row) # {'_id': ObjectId('66a327d8e663bce16b57b4a7'), 'ID': 1, 'Projects': 'Example project', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'superadmin/lollimedia', 'Login Email': '', 'Site Url': ' https://100.americanclubhk.com', 'Comment': '', 'Polylang': 'FALSE', 'domain': 'domain-1', 'row_index': 1}
-                row.pop('_id')
-                row.pop('domain')
-                row_values.append(row)
-                # get values from row_values (not include key)
-            update_response = update_many_row_value(service, google_selected_details['sheetId'], sheet.id, row_values)
-            print('update_response: ', update_response)
-            # try:
+                update_result = collection_spreadsheets.update_many(action_conditions, action_replace_query)
+                # get new values
+                print('db update_result: ', update_result)
+                print(update_result.matched_count, update_result.modified_count)
+                # get new values
+                query_result = collection_spreadsheets.find({'_id': {'$in': row_ids}})
+                for row in query_result:
+                    print('>>>>', row) # {'_id': ObjectId('66a327d8e663bce16b57b4a7'), 'ID': 1, 'Projects': 'Example project', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'superadmin/lollimedia', 'Login Email': '', 'Site Url': ' https://100.americanclubhk.com', 'Comment': '', 'Polylang': 'FALSE', 'domain': 'domain-1', 'row_index': 1}
+                    row.pop('_id')
+                    row.pop('domain')
+                    row_values.append(row)
+                    # get values from row_values (not include key)
+                update_response = update_many_row_value(service, google_selected_details['sheetId'], sheet.id, row_values)
+                temp_messages.append(f"Found {update_result.matched_count} rows and updated {update_result.modified_count} rows")
+                print('update_response: ', update_response)
                 
-            # except Exception as e:
-            #     print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', e)
-            #     temp_messages.append("Failed to update cell")
-            
-            
-            
-            
-
-            
+            except Exception as e:
+                print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', e)
+                temp_messages.append("Failed to update cell")
 
 
-
-
-
-
-        if action_do == 'Get summary':
+        if action_do == 'Get summary' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
-        if action_do == 'Get information':
+        if action_do == 'Get information' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Get information"')
+            # add domain filter
+            action_conditions['domain'] = current_user['domain']
+            infomation_result = collection_spreadsheets.find(action_conditions)
+            for index, info in enumerate(infomation_result):
+                print('>>>>>>>>>>>>>>>>>>>> found info: ', info)
+                info.pop('_id')
+                info.pop('domain')
+                info.pop('row_index')
+                row_data = ', ' . join([f"{key}: {value}" for key, value in info.items()])
+                temp_messages.append('{}. {}'.format(index + 1, row_data))
     # ===================== END RAG =================================================
 
 
