@@ -294,3 +294,55 @@ def delete_google_sheet_row(service, spreadsheet_id: str, sheet_id: str, row_ind
     # Print the response
     print(json.dumps(response, indent=4))
     return response
+
+def update_many_row_value(service, spreadsheet_id: str, sheet_id: str, row_values: list) -> dict:
+    """Update a cell value in Google Sheet"""
+
+    # build the batch update request
+    requests = []
+    for row in row_values:
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print(row)
+        row_index = row['row_index']
+        # remove row_index from row
+        row.pop('row_index')
+        values = []
+        for key, value in row.items():
+            if isinstance(value, int):
+                values.append({"userEnteredValue": {"numberValue": value}})
+            elif isinstance(value, bool):
+                values.append({"userEnteredValue": {"boolValue": value}})
+            else:
+                values.append({"userEnteredValue": {"stringValue": value}})
+        requests.append({
+            "updateCells": {
+                "rows": [
+                    {
+                        "values": values
+                    }
+                ],
+                "fields": "userEnteredValue",
+                "start": {
+                    "sheetId": sheet_id,
+                    "rowIndex": row_index,
+                    "columnIndex": 0
+                }
+            }
+        })
+    # execute the batch update request
+    body = {
+        "requests": requests
+    }
+    print(body)
+    # Execute the batchUpdate request
+    response = service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body=body
+    ).execute()
+
+    # Print the response
+    print(json.dumps(response, indent=4))
+    return response

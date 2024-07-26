@@ -65,7 +65,7 @@ Your responses should always be in JSON format following this template:
     "message": if action_status is "missing_data", provide the missing data information, otherwise leave your chat response,
     "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
     "column_values": "list of new column title or get information column values", [] if not applicable,
-    "value_to_replace": "cell new value", "" if not applicable,
+    "replace_query": build a MongoDB replace query to update the data. "", if not applicable,
     "row_values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
 }}
 
@@ -83,7 +83,7 @@ Response:
     "message": "Row added successfully.",
     "mongodb_condition_object": {{}},
     "column_values": [],
-    "value_to_replace": "",
+    "replace_query": "",
     "row_values": [{{{example_data2}}}]
 }}
 
@@ -95,7 +95,7 @@ Response:
     "message": "Row deleted successfully.",
     "mongodb_condition_object": "{{"{example_data4}": "{example_data5}"}}",
     "column_values": [],
-    "value_to_replace": "",
+    "replace_query": "",
     "row_values": []
 }}
 
@@ -110,7 +110,7 @@ Response:
     "message": "Please provide the {example_data3} of the row where the {example_data4} value is '{example_data5}'.",
     "mongodb_condition_object": {{}},
     "column_values": [],
-    "value_to_replace": "",
+    "replace_query": "",
     "row_values": []
 }}
 

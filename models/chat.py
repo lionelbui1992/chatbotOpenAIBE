@@ -3,7 +3,7 @@ from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_credentials, get_gspread_client, get_service, update_google_sheet_data
+from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_credentials, get_gspread_client, get_service, update_google_sheet_data, update_many_row_value
 from core.input_actions import get_analysis_input_action
 from core.openai import create_completion, create_embedding
 from db import collection_embedded_server, collection_action, collection_attribute, collection_users, collection_spreadsheets
@@ -234,7 +234,7 @@ def get_chat_completions(request):
         action_message          = action_info.get('message', '')
         action_conditions:dict  = action_info.get('mongodb_condition_object', {})
         action_column_values    = action_info.get('column_values', [])
-        action_value_to_replace = action_info.get('value_to_replace', '')
+        action_replace_query = action_info.get('replace_query', '')
         action_row_values       = action_info.get('row_values', [])
         google_access_token     = current_user['settings']['googleAccessToken']
         google_selected_details = domain.googleSelectedDetails
@@ -320,7 +320,58 @@ def get_chat_completions(request):
 
         if action_do == 'Edit cell':
             print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
+            # {'do_action': 'Edit cell', 'action_status': 'ready_to_process', 'message': '', 'mongodb_condition_object': {'Projects': 'American Club'}, 'column_values': [], 'replace_query': {'$set': {'Projects': 'Example project'}}, 'row_values': []}
+            sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
+
+            # add domain filter
+            print(action_conditions, type(action_conditions))
+            action_conditions['domain'] = current_user['domain']
+
+            print(action_conditions)
+
+            # search for the row data:
+            query_result = list(collection_spreadsheets.find(action_conditions))
+            row_ids = []
+            row_values = []
+            # if no row found, return message
+            if len(list(query_result)) == 0:
+                temp_messages.append("No row found")
+            for row in query_result:
+                print(row['row_index'], row['Projects'])
+                row_ids.append(row['_id'])
+
+            update_result = collection_spreadsheets.update_many(action_conditions, action_replace_query)
+            # get new values
+            print('update_result: ', update_result)
+            temp_messages.append("Updated cell")
+            print(update_result.matched_count, update_result.modified_count)
+            # get new values
+            query_result = collection_spreadsheets.find({'_id': {'$in': row_ids}})
+            for row in query_result:
+                print('>>>>', row) # {'_id': ObjectId('66a327d8e663bce16b57b4a7'), 'ID': 1, 'Projects': 'Example project', 'Need to upgrade': '', 'Set Index , Follow': '', 'Auto Update': 'OFF', 'WP Version': '', 'Password': 'superadmin/lollimedia', 'Login Email': '', 'Site Url': ' https://100.americanclubhk.com', 'Comment': '', 'Polylang': 'FALSE', 'domain': 'domain-1', 'row_index': 1}
+                row.pop('_id')
+                row.pop('domain')
+                row_values.append(row)
+                # get values from row_values (not include key)
+            update_response = update_many_row_value(service, google_selected_details['sheetId'], sheet.id, row_values)
+            print('update_response: ', update_response)
+            # try:
+                
+            # except Exception as e:
+            #     print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', e)
+            #     temp_messages.append("Failed to update cell")
             
+            
+            
+            
+
+            
+
+
+
+
+
+
         if action_do == 'Get summary':
             print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
         if action_do == 'Get information':
