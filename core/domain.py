@@ -76,3 +76,7 @@ class DomainObject:
         except Exception as e:
             print('Error updating domain: ', e)
             return False
+    @staticmethod
+    def find_by_condition(condition: dict):
+        """Find domain by condition"""
+        return [DomainObject.from_dict(data) for data in collection_domain.find(condition)]

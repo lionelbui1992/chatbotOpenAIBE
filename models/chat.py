@@ -284,12 +284,12 @@ def get_chat_completions(request):
         if action_do == 'Delete row' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
             sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
-            # get row index from collection_spreadsheets from action_conditions
             # add domain filter
             print(action_conditions, type(action_conditions))
             action_conditions['domain'] = current_user['domain']
 
             print(action_conditions)
+            # get row index from collection_spreadsheets from action_conditions
             query_result = list(collection_spreadsheets.find(action_conditions))
             # if no row found, return message
             if len(list(query_result)) == 0:
@@ -309,10 +309,18 @@ def get_chat_completions(request):
                 print('>>>>>>>>>>>>>>>>>>>> "Delete {total_rows} rows" failed ', e)
 
 
-        if action_do == 'Delete column':
+        if action_do == 'Delete column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
+            sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
+            # add domain filter
+            print(action_conditions, type(action_conditions))
+            action_conditions['domain'] = current_user['domain']
+            print(action_conditions)
+            temp_messages.append("Skip action...")
+
         if action_do == 'Edit cell':
             print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
+            
         if action_do == 'Get summary':
             print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
         if action_do == 'Get information':
