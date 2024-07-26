@@ -1,3 +1,4 @@
+import json
 from flask import jsonify
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -14,8 +15,13 @@ MESSAGE_CONSTANT = {
     'data_retrieved_and_printed_successfully': 'Data retrieved and printed successfully',
 }
 
-def get_gspread_client(google_access_token: str) -> gspread.Client:
-    creds = Credentials(token=google_access_token)
+def get_credentials(google_access_token: str) -> Credentials:
+    return Credentials(token=google_access_token)
+
+def get_service(credentials: Credentials) -> build:
+    return build('sheets', 'v4', credentials=credentials)
+
+def get_gspread_client(creds: Credentials) -> gspread.Client:
     return gspread.authorize(creds)
 
 def get_google_sheets_data(current_user, google_access_token, google_selected_details):
@@ -259,11 +265,8 @@ def append_google_sheet_column(google_selected_details: dict, gspread_client: gs
     return sheet.update_cell(1, last_column + 1, column_name)
 
 
-def delete_google_sheet_row(google_selected_details: dict, gspread_client: gspread.Client, row_indexes: list) -> dict:
+def delete_google_sheet_row(service, spreadsheet_id: str, sheet_id: str, row_indexes: list) -> dict:
     """Delete a row from Google Sheet"""
-    sheet_id = google_selected_details['sheetId']
-    SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
-    sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
     # build the batch update request
     requests = []
@@ -271,10 +274,10 @@ def delete_google_sheet_row(google_selected_details: dict, gspread_client: gspre
         requests.append({
             "deleteDimension": {
                 "range": {
-                    "sheetId": sheet.id,
+                    "sheetId": sheet_id,
                     "dimension": "ROWS",
-                    "startIndex": row_index + 1, # index 0 is column header
-                    "endIndex": row_index + 2
+                    "startIndex": row_index,
+                    "endIndex": row_index + 1
                 }
             }
         })
@@ -282,5 +285,12 @@ def delete_google_sheet_row(google_selected_details: dict, gspread_client: gspre
     body = {
         "requests": requests
     }
-    print(body)
-    return sheet.client.batch_update(sheet.id, body)
+    # Execute the batchUpdate request
+    response = service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body=body
+    ).execute()
+
+    # Print the response
+    print(json.dumps(response, indent=4))
+    return response

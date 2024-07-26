@@ -3,7 +3,7 @@ from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_gspread_client, update_google_sheet_data
+from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_credentials, get_gspread_client, get_service, update_google_sheet_data
 from core.input_actions import get_analysis_input_action
 from core.openai import create_completion, create_embedding
 from db import collection_embedded_server, collection_action, collection_attribute, collection_users, collection_spreadsheets
@@ -238,14 +238,20 @@ def get_chat_completions(request):
         action_row_values       = action_info.get('row_values', [])
         google_access_token     = current_user['settings']['googleAccessToken']
         google_selected_details = domain.googleSelectedDetails
+        SPREADSHEET_URL         = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
+        creds                   = get_credentials(google_access_token)
+        gspread_client          = get_gspread_client(creds)
+        service                 = get_service(creds)
+
+        # convert to dictionary if action_conditions is string
+        if isinstance(action_conditions, str):
+            action_conditions = json.loads(action_conditions)
 
 
         # "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information"
         if action_do == 'Add row' and action_status == 'ready_to_process':
             #  call append_google_sheet_row
-            gspread_client          = get_gspread_client(google_access_token)
             print(action_row_values)
-            SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
             sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
             try:
                 # get values from action_row_values (not include key)
@@ -268,7 +274,6 @@ def get_chat_completions(request):
             #         print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
         if action_do == 'Add column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Add column"')
-            gspread_client          = get_gspread_client(google_access_token)
             for index, column_title in enumerate(action_column_values):
                 try:
                     add_column_response = append_google_sheet_column(google_selected_details, gspread_client, column_title)
@@ -278,7 +283,7 @@ def get_chat_completions(request):
                     print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
         if action_do == 'Delete row' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
-            gspread_client          = get_gspread_client(google_access_token)
+            sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
             # get row index from collection_spreadsheets from action_conditions
             # add domain filter
             print(action_conditions, type(action_conditions))
@@ -291,9 +296,12 @@ def get_chat_completions(request):
                 temp_messages.append("No row found")
             row_indexes = []
             for row in query_result:
-                row_indexes.append(row['row_index'])
+                row_indexes.append(row['row_index']) # row 0 is column heading
+                print(row['row_index'], row['Projects'])
             total_rows = len(row_indexes)
-            delete_google_sheet_row(google_selected_details, gspread_client, row_indexes)
+            # reverse row_indexes to delete from last row
+            row_indexes.reverse()
+            delete_google_sheet_row(service, google_selected_details['sheetId'], sheet.id, row_indexes)
             try:
                 # delete row from google sheet, index start from 1, index 0 is column heading
                 temp_messages.append(f"Deleted {total_rows} rows")

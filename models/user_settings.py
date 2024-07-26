@@ -1,7 +1,7 @@
 from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject
-from core.google_sheet import import_google_sheets_data, pull_google_sheets_data, get_gspread_client
+from core.google_sheet import get_credentials, import_google_sheets_data, pull_google_sheets_data, get_gspread_client
 from core.input_actions import create_domain_instructions
 
 from db import collection_users, collection_spreadsheets
@@ -32,7 +32,8 @@ def set_user_settings(request):
     data                    = request.get_json()
     google_access_token     = data.get('googleAccessToken')
     google_selected_details = data.get('googleSelectedDetails')
-    gspread_client          = get_gspread_client(google_access_token)
+    creds                   = get_credentials(google_access_token)
+    gspread_client          = get_gspread_client(creds)
 
 
     # ===================== Clean data ==============================================
@@ -131,7 +132,8 @@ def set_user_setting_google(request):
     data                    = request.get_json()
     google_access_token     = data.get('googleAccessToken')
     google_selected_details = data.get('googleSelectedDetails')
-    gspread_client          = get_gspread_client(google_access_token)
+    creds                   = get_credentials(google_access_token)
+    gspread_client          = get_gspread_client(creds)
 
     # ===================== Clean data ==============================================
     if len(google_selected_details) > 0:
