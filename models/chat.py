@@ -1,3 +1,4 @@
+import traceback
 from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
@@ -13,6 +14,7 @@ from core.google_sheet import update_many_row_value
 
 from core.input_actions import create_domain_instructions
 from core.openai import create_completion, create_embedding
+from core.util import Util
 from db import collection_embedded_server
 from db import collection_action
 from db import collection_attribute
@@ -206,8 +208,9 @@ def get_chat_completions(request):
         return jsonify({"error": "No messages provided"})
     
     # get latest message content text
-    input_text      = input_messages[-1].get('content', "")[0].get('text', "")
+    # input_text      = input_messages[-1].get('content', "")[0].get('text', "")
     # set first item content text from domain instructions
+    print('domain.instructions: ', domain)
     input_messages[0]['content'][0]['text'] = domain.instructions
 
     # ===================== End Input text ==========================================
@@ -230,7 +233,7 @@ def get_chat_completions(request):
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     except Exception as e:
         # this step can be skipped
-        print(':::::::::::ERROR - get_analysis_input_action ', str(e))
+        print(':::::::::::ERROR - get_analysis_input_action ', traceback.format_exc())
         # assistant_message = {
         #     "role": "assistant",
         #     "content": "Sorry, I can't analyze the action, please try again!"
@@ -244,22 +247,17 @@ def get_chat_completions(request):
         action_do               = action_info.get('do_action', 'None') # 'Add row', Add column, Delete row, Delete column, Edit cell, Get summary, Get information, None
         action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
         action_message          = action_info.get('message', '')
-        action_conditions:dict  = action_info.get('mongodb_condition_object', {})
+        action_conditions:dict  = Util.convert_string_to_list(action_info.get('mongodb_condition_object', {}))
         action_column_values    = action_info.get('column_values', [])
         action_replace_query    = action_info.get('replace_query', '')
         action_row_values       = action_info.get('row_values', [])
-        action_url             = action_info.get('url', '')
+        action_url              = action_info.get('url', '')
         google_access_token     = current_user['settings']['googleAccessToken']
         google_selected_details = domain.googleSelectedDetails
         SPREADSHEET_URL         = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
         creds                   = get_credentials(google_access_token)
         gspread_client          = get_gspread_client(creds)
         service                 = get_service(creds)
-
-        # convert to dictionary if action_conditions is string
-        if isinstance(action_conditions, str):
-            action_conditions = json.loads(action_conditions)
-
 
         # "Add row", "Add column", "Delete row", "Delete column", "Edit cell" or "None", "Get summary", "Get information"
         if action_do == 'Add row' and action_status == 'ready_to_process':
@@ -380,6 +378,7 @@ def get_chat_completions(request):
             # add domain filter
             action_conditions['domain'] = current_user['domain']
             infomation_result = collection_spreadsheets.count_documents(action_conditions)
+            print(action_conditions)
             if infomation_result > 1:
                 temp_messages.append(f"Found {infomation_result} rows")
             elif infomation_result == 1:
@@ -390,7 +389,8 @@ def get_chat_completions(request):
             print('>>>>>>>>>>>>>>>>>>>> "Get information"')
             # add domain filter
             action_conditions['domain'] = current_user['domain']
-            infomation_result = list(collection_spreadsheets.find(action_conditions))
+            infomation_result = list(collection_spreadsheets.find(json.loads(json.dumps(action_conditions))))
+            print(infomation_result)
             # if no row found, return message
             if len(infomation_result) == 0:
                 temp_messages.append("No data found")
@@ -441,8 +441,16 @@ def get_chat_completions(request):
 
     if temp_messages:
         action_message = action_message + "\n\n" + "\n\n".join(temp_messages)
-        # need full json data, will be process in short time
-        completion_dict['choices'][0]['message']['content'] = action_message
+        message_content = completion_dict['choices'][0]['message']['content']
+        try:
+            # if message content is JSON string, add message to the end of JSON string
+            json_data = json.loads(message_content)
+            json_data['message'] += action_message
+            completion_dict['choices'][0]['message']['content'] = json.dumps(json_data)
+        except Exception as e:
+            # need full json data, will be process in short time
+            completion_dict['choices'][0]['message']['content'] = action_message
+            print(e)
 
     # return the JSON string
     return completion_dict
