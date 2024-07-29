@@ -31,7 +31,8 @@ def create_completion(messages: list):
         max_tokens = 1500,
     )
     print('::::::::::::::::::::::::::::::::::::::::::::::')
-    print('Create completetions: ', completions.usage.total_tokens, ' tokens, ', messages)
+    # print('Create completetions: ', completions.usage.total_tokens, ' tokens, ', messages)
+    print('Create completetions: ', completions.usage.total_tokens, ' tokens, ')
     print('::::::::::::::::::::::::::::::::::::::::::::::')
     return completions
         

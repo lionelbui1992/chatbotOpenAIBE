@@ -13,7 +13,8 @@ def create_domain_instructions(domain: DomainObject) -> str:
         'Delete column',
         'Edit cell',
         'Get summary',
-        'Get information'
+        'Get information',
+        'Insert from URL',
     ]
     action_string = ', '.join([f'"{action}"' for action in actions])
     avaible_title: list = []
@@ -65,8 +66,9 @@ Your responses should always be in JSON format following this template:
     "message": if action_status is "missing_data", provide the missing data information, otherwise leave nature conversation response,
     "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
     "column_values": "list of new column title or get information column values", [] if not applicable,
-    "replace_query": build a MongoDB replace query ($set) to update the data. "", if not applicable,
-    "row_values": a list of new rows values. [] if is Edit cell or not applicable, value should be full row data in the order of the table columns. All column values required in this list.
+    "replace_query": build a MongoDB replace query (include $set) to update the data. "", if not applicable,
+    "row_values": a list of new rows values. [] if is Edit cell or not applicable, value should be full row data in the order of the table columns. All column values required in this list,
+    "url": "URL" if the action is "Insert from URL", otherwise leave as ""
 }}
 
 Steps to follow:
@@ -84,7 +86,8 @@ Response:
     "mongodb_condition_object": {{}},
     "column_values": [],
     "replace_query": "",
-    "row_values": [{{{example_data2}}}]
+    "row_values": [{{{example_data2}}}],
+    "url": ""
 }}
 
 User: "Delete the row with {example_data4} {example_data5}"
@@ -96,7 +99,8 @@ Response:
     "mongodb_condition_object": "{{"{example_data4}": "{example_data5}"}}",
     "column_values": [],
     "replace_query": "",
-    "row_values": []
+    "row_values": [],
+    "url": ""
 }}
 
 If additional details are needed for an action, return the action_status "missing_data" with a message indicating the missing information.
@@ -111,7 +115,8 @@ Response:
     "mongodb_condition_object": {{}},
     "column_values": [],
     "replace_query": "",
-    "row_values": []
+    "row_values": [],
+    "url": ""
 }}
 
 Ask users to provide all details for each action to avoid "missing_data" status where possible. The "row_values" must be list of {{key:value}} and reordered if the column titles are not in the correct order.

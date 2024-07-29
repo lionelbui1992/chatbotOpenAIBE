@@ -92,7 +92,7 @@ def set_user_settings(request):
                     #  rebuild instructions
 
                     instruction_prompt = create_domain_instructions(domain)
-                    print('instruction_prompt', instruction_prompt)
+                    # print('instruction_prompt', instruction_prompt)
                     if (len(rows) > 1):
                         response_message['message'] = 'From spreadsheet, imported ' + str(len(rows) - 1) + ' rows imported'
                     elif len(rows) == 1:
@@ -153,9 +153,7 @@ def set_user_setting_google(request):
 
     # validate from db
     if current_user:
-        print(current_user['domain'])
         domain = DomainObject.load(current_user['domain'])
-        print(domain)
 
         domain.googleSelectedDetails = google_selected_details
         response_message = {
@@ -192,7 +190,7 @@ def set_user_setting_google(request):
                     #  rebuild instructions
 
                     instruction_prompt = create_domain_instructions(domain)
-                    print('instruction_prompt', instruction_prompt)
+                    # print('instruction_prompt', instruction_prompt)
 
                     if (len(rows) > 1):
                         response_message['message'] = 'From spreadsheet, imported ' + str(len(rows) - 1) + ' rows imported'

@@ -248,6 +248,7 @@ def get_chat_completions(request):
         action_column_values    = action_info.get('column_values', [])
         action_replace_query    = action_info.get('replace_query', '')
         action_row_values       = action_info.get('row_values', [])
+        action_url             = action_info.get('url', '')
         google_access_token     = current_user['settings']['googleAccessToken']
         google_selected_details = domain.googleSelectedDetails
         SPREADSHEET_URL         = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
@@ -344,7 +345,7 @@ def get_chat_completions(request):
                 if len(list(query_result)) == 0:
                     temp_messages.append("No row found")
                 for row in query_result:
-                    print(row['row_index'], row['Projects'])
+                    print('row index: ', row['row_index'])
                     row_ids.append(row['_id'])
                 print(type(action_replace_query), action_replace_query)
                 # if action_replace_query is not dict, convert to dict
@@ -368,7 +369,7 @@ def get_chat_completions(request):
                 print('update_response: ', update_response)
                 
             except Exception as e:
-                print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', e)
+                print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', str(e))
                 temp_messages.append("Failed to update cell")
             finally:
                 chat_action_callback(domain, gspread_client)
@@ -400,6 +401,36 @@ def get_chat_completions(request):
                 info.pop('row_index')
                 row_data = ', ' . join([f"{key}: {value}" for key, value in info.items()])
                 temp_messages.append('{}. {}'.format(index + 1, row_data))
+        if action_do == 'Insert from URL' and action_status == 'ready_to_process':
+            print('>>>>>>>>>>>>>>>>>>>> "Insert from URL"')
+            print(action_url)
+            # get information from URL use gpt-4o
+            try:
+                heading_columns = ", ".join('"{column}"'.format(column=column) for column in domain.columns)
+                completion = create_completion(messages=[
+                    # alway return json string
+                    {"role": "system", "content": "Your task is to extract specific information from the URL provided and format it as a JSON string. The JSON string should contain the following keys: {columns}".format(columns=heading_columns)},
+                    {"role": "user", "content": "URL: {url}".format(url=action_url)},
+                ])
+                message_content = completion.choices[0].message.content
+                # get content from ```json  ```
+                if '```json' in message_content:
+                    json_data = json.loads(message_content.split('```json')[1].split('```')[0])
+                    print('json_data: ', json_data)
+                else:
+                    json_data = json.loads(completion.choices[0].message.content)
+                    print('json_data: ', json_data)
+                #  call append_google_sheet_row
+                sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
+                # get value from json_data
+                values = [list(json_data.values())]
+                sheet.append_rows(values)
+                temp_messages.append("Added {total_rows} rows\n\n{row_detail}".format(total_rows=len(values), row_detail=json_data))
+                chat_action_callback(domain, gspread_client)
+            except Exception as e:
+                print('>>>>>>>>>>>>>>>>>>>> "Insert from URL" failed ', e)
+                temp_messages.append("Failed to insert information from URL")
+
 
     # ===================== END RAG =================================================
 
@@ -440,7 +471,7 @@ def chat_action_callback(domain, gspread_client):
                 #  rebuild instructions
 
                 instruction_prompt = create_domain_instructions(domain)
-                print('instruction_prompt', instruction_prompt)
+                # print('instruction_prompt', instruction_prompt)
             except Exception as e:
                 print(':::::::::::ERROR - import_google_sheets_data ', str(e))
         else:
