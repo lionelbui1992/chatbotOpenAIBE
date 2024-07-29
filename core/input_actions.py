@@ -53,7 +53,7 @@ def create_domain_instructions(domain: DomainObject) -> str:
     for title in domain.columns:
         avaible_title.append(title)
     all_title = ', '.join([f'"{title}"' for title in avaible_title])
-    instruction_prompt = f'''You are tasked with managing a table with the following structure: {all_title}.
+    instruction_prompt = f'''You are an AI assistant tasked with managing a table with the following structure: {all_title}.
 
 In each interaction, determine the appropriate action, the conditions if needed, and new data to be added based on the column headings (sematic meaning, case-insensitive).
 
@@ -62,11 +62,11 @@ Your responses should always be in JSON format following this template:
 {{
     "do_action": {action_string} or "None" if not applicable,
     "action_status": "ready_to_process" if ready to process the user input do_action, "missing_data" if missing cell data or more information is needed, otherwise leave as "None",
-    "message": if action_status is "missing_data", provide the missing data information, otherwise leave your chat response,
+    "message": if action_status is "missing_data", provide the missing data information, otherwise leave nature conversation response,
     "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
     "column_values": "list of new column title or get information column values", [] if not applicable,
-    "replace_query": build a MongoDB replace query to update the data. "", if not applicable,
-    "row_values": a list of rows values. [] if not applicable, value should be full row data in the order of the table columns. All column values required in this list.
+    "replace_query": build a MongoDB replace query ($set) to update the data. "", if not applicable,
+    "row_values": a list of new rows values. [] if is Edit cell or not applicable, value should be full row data in the order of the table columns. All column values required in this list.
 }}
 
 Steps to follow:

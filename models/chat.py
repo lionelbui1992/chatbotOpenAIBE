@@ -350,6 +350,7 @@ def get_chat_completions(request):
                 # if action_replace_query is not dict, convert to dict
                 if isinstance(action_replace_query, str):
                     action_replace_query = json.loads(action_replace_query)
+                print(type(action_replace_query), action_replace_query)
                 update_result = collection_spreadsheets.update_many(action_conditions, action_replace_query)
                 # get new values
                 print('db update_result: ', update_result)
@@ -408,7 +409,7 @@ def get_chat_completions(request):
     completion_dict = action_completion.to_dict()
 
     if temp_messages:
-        action_message = action_message + "\n" + "\n".join(temp_messages)
+        action_message = action_message + "\n\n" + "\n\n".join(temp_messages)
         # need full json data, will be process in short time
         completion_dict['choices'][0]['message']['content'] = action_message
 

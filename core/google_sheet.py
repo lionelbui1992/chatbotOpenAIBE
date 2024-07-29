@@ -137,6 +137,7 @@ def import_google_sheets_data(_domain, rows: list) -> dict:
         row['domain'] = _domain.name
         row['row_index'] = index + 1
     # import all rows to mongodb
+    print('Importing data to MongoDB... ', len(rows), ' rows')
     return collection_spreadsheets.insert_many(rows)
 
 

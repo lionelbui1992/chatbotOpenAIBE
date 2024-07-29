@@ -19,6 +19,7 @@ import requests
 
 from config import Config
 
+from core.domain import DomainObject
 from models.auth import auth_login
 from models.auth import auth_refresh_token
 from models.auth import auth_register
@@ -245,6 +246,21 @@ def save_details():
     # Save the selected details to your database
     print('Received selected details:', details)
     return jsonify({'message': 'Selected details saved successfully'})
+
+# domain
+@app.route('/api/v1/domain', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+@app.route('/api/v1/domain/', methods=['GET', 'PUT', 'POST', 'OPTIONS'])
+def domain_v1():
+    if request.method == 'OPTIONS':
+        return '', 200
+    # call DomainObject methods here: load_all
+    try:
+        data = DomainObject.load_all()
+        # return list [{'name': 'domain.name', 'label': 'domain.label'}, ...]
+        domain_list = [{'name': d.name, 'label': d.label} for d in data]
+        return jsonify({'status': 'success', 'data': domain_list})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
