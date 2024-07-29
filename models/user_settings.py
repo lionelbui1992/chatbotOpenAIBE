@@ -140,7 +140,7 @@ def set_user_setting_google(request):
     current_user            = collection_users.find_one({"_id": ObjectId(current_user_id)})
     data                    = request.get_json()
     google_access_token     = data.get('googleAccessToken')
-    google_selected_details = data.get('googleSelectedDetails')
+    google_selected_details = data.get('googleSelectedDetails', [])
     creds                   = get_credentials(google_access_token)
     gspread_client          = get_gspread_client(creds)
 
@@ -153,7 +153,10 @@ def set_user_setting_google(request):
 
     # validate from db
     if current_user:
+        print(current_user['domain'])
         domain = DomainObject.load(current_user['domain'])
+        print(domain)
+
         domain.googleSelectedDetails = google_selected_details
         response_message = {
             "status": "success",

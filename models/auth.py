@@ -31,7 +31,10 @@ def auth_login(request):
         else:
             user['settings']['googleSelectedDetails'] = []
 
-        user['settings']['instructions'] = _domain.instructions
+        if _domain is not None:
+            user['settings']['instructions'] = _domain.instructions
+        else:
+            user['settings']['instructions'] = ""
 
         return {
             "status": "success",
@@ -95,7 +98,7 @@ def auth_register(request):
         }
     # Create a new user
     user = {
-        "domain": str(_domain),
+        "domain": _domain.name,
         "email": email,
         "name": email,
         "password": password,
