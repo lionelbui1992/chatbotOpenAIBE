@@ -1,12 +1,24 @@
-from typing import Collection
 from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, append_google_sheet_row, delete_google_sheet_row, get_credentials, get_gspread_client, get_service, import_google_sheets_data, pull_google_sheets_data, update_google_sheet_data, update_many_row_value
-from core.input_actions import create_domain_instructions, get_analysis_input_action
+from core.google_sheet import append_google_sheet_column
+from core.google_sheet import delete_google_sheet_row
+from core.google_sheet import get_credentials
+from core.google_sheet import get_gspread_client
+from core.google_sheet import get_service
+from core.google_sheet import import_google_sheets_data
+from core.google_sheet import pull_google_sheets_data
+from core.google_sheet import update_many_row_value
+
+from core.input_actions import create_domain_instructions
 from core.openai import create_completion, create_embedding
-from db import collection_embedded_server, collection_action, collection_attribute, collection_users, collection_spreadsheets, truncate_collection
+from db import collection_embedded_server
+from db import collection_action
+from db import collection_attribute
+from db import collection_users
+from db import collection_spreadsheets
+from db import truncate_collection
 
 import json
 
@@ -312,7 +324,7 @@ def get_chat_completions(request):
             temp_messages.append("Skip action...")
             chat_action_callback(domain, gspread_client)
 
-        if action_do == 'Edit cell':
+        if action_do == 'Edit cell' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
             # {'do_action': 'Edit cell', 'action_status': 'ready_to_process', 'message': '', 'mongodb_condition_object': {'Projects': 'American Club'}, 'column_values': [], 'replace_query': {'$set': {'Projects': 'Example project'}}, 'row_values': []}
             sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
@@ -376,9 +388,9 @@ def get_chat_completions(request):
             print('>>>>>>>>>>>>>>>>>>>> "Get information"')
             # add domain filter
             action_conditions['domain'] = current_user['domain']
-            infomation_result = collection_spreadsheets.find(action_conditions)
+            infomation_result = list(collection_spreadsheets.find(action_conditions))
             # if no row found, return message
-            if len(list(infomation_result)) == 0:
+            if len(infomation_result) == 0:
                 temp_messages.append("No data found")
             for index, info in enumerate(infomation_result):
                 print('>>>>>>>>>>>>>>>>>>>> found info: ', info)
