@@ -23,6 +23,7 @@ from db import collection_spreadsheets
 from db import truncate_collection
 
 import json
+import threading
 
 def update_data_to_db(_id, plot):
     """
@@ -249,7 +250,7 @@ def get_chat_completions(request):
         action_message          = action_info.get('message', '')
         action_conditions:dict  = Util.convert_string_to_list(action_info.get('mongodb_condition_object', {}))
         action_column_values    = action_info.get('column_values', [])
-        action_replace_query    = action_info.get('replace_query', '')
+        action_replace_query    = Util.convert_string_to_list(action_info.get('replace_query', {}))
         action_row_values       = action_info.get('row_values', [])
         action_url              = action_info.get('url', '')
         google_access_token     = current_user['settings']['googleAccessToken']
@@ -274,7 +275,7 @@ def get_chat_completions(request):
                 temp_messages.append("Failed to add rows")
                 print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
             finally:
-                chat_action_callback(domain, gspread_client)
+                run_chat_action_callback(domain, gspread_client)
         if action_do == 'Add column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Add column"')
             for index, column_title in enumerate(action_column_values):
@@ -284,7 +285,7 @@ def get_chat_completions(request):
                 except Exception as e:
                     temp_messages.append(f"{index + 1}. Failed to add new column: {column_title}\n{add_column_response.message}")
                     print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
-            chat_action_callback(domain, gspread_client)
+            run_chat_action_callback(domain, gspread_client)
         if action_do == 'Delete row' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
             sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
@@ -311,7 +312,7 @@ def get_chat_completions(request):
                 temp_messages.append(f"Deleted {total_rows} rows")
             except Exception as e:
                 print('>>>>>>>>>>>>>>>>>>>> "Delete {total_rows} rows" failed ', e)
-            chat_action_callback(domain, gspread_client)
+            run_chat_action_callback(domain, gspread_client)
 
         if action_do == 'Delete column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete column"')
@@ -321,7 +322,7 @@ def get_chat_completions(request):
             action_conditions['domain'] = current_user['domain']
             print(action_conditions)
             temp_messages.append("Skip action...")
-            chat_action_callback(domain, gspread_client)
+            run_chat_action_callback(domain, gspread_client)
 
         if action_do == 'Edit cell' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
@@ -346,10 +347,6 @@ def get_chat_completions(request):
                     print('row index: ', row['row_index'])
                     row_ids.append(row['_id'])
                 print(type(action_replace_query), action_replace_query)
-                # if action_replace_query is not dict, convert to dict
-                if isinstance(action_replace_query, str):
-                    action_replace_query = json.loads(action_replace_query)
-                print(type(action_replace_query), action_replace_query)
                 update_result = collection_spreadsheets.update_many(action_conditions, action_replace_query)
                 # get new values
                 print('db update_result: ', update_result)
@@ -367,10 +364,10 @@ def get_chat_completions(request):
                 print('update_response: ', update_response)
                 
             except Exception as e:
-                print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', str(e))
+                print('>>>>>>>>>>>>>>>>>>>> "Edit cell" failed ', traceback.format_exc())
                 temp_messages.append("Failed to update cell")
             finally:
-                chat_action_callback(domain, gspread_client)
+                run_chat_action_callback(domain, gspread_client)
 
 
         if action_do == 'Get summary' and action_status == 'ready_to_process':
@@ -426,7 +423,7 @@ def get_chat_completions(request):
                 values = [list(json_data.values())]
                 sheet.append_rows(values)
                 temp_messages.append("Added {total_rows} rows\n\n{row_detail}".format(total_rows=len(values), row_detail=json_data))
-                chat_action_callback(domain, gspread_client)
+                run_chat_action_callback(domain, gspread_client)
             except Exception as e:
                 print('>>>>>>>>>>>>>>>>>>>> "Insert from URL" failed ', e)
                 temp_messages.append("Failed to insert information from URL")
@@ -475,15 +472,27 @@ def chat_action_callback(domain, gspread_client):
 
             # import data to db
             try:
-                import_google_sheets_data(domain, rows)
-                #  rebuild instructions
-
-                instruction_prompt = create_domain_instructions(domain)
-                # print('instruction_prompt', instruction_prompt)
+                thread1 = threading.Thread(target=import_google_sheets_data, args=(domain, rows))
+                thread1.start()
+                thread1.join()
+                thread2 = threading.Thread(target=create_domain_instructions, args=(domain,))
+                thread2.start()
             except Exception as e:
-                print(':::::::::::ERROR - import_google_sheets_data ', str(e))
+                print(':::::::::::ERROR - import_google_sheets_data ', traceback.format_exc())
         else:
             # ===================== pull data error =========================================
             print(':::::::::::ERROR - pull_google_sheets_data ', pull_google_response['message'])
     except Exception as e:
-        print(':::::::::::ERROR - pull_google_sheets_data ', str(e))
+        print(':::::::::::ERROR - pull_google_sheets_data ', traceback.format_exc())
+    print('>>>>>>>>>>>>>>>>>>>>>>END CALLBACK<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+
+def run_chat_action_callback(domain, gspread_client):
+    print('>>>>>>>>>>>>>>>>>>>>>>RUN CALLBACK<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    thread = threading.Thread(target=chat_action_callback, args=(domain, gspread_client))
+    thread.start()

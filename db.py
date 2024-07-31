@@ -17,6 +17,7 @@ collection_total = db['embedded_total']
 collection_embedded_server = db['embedded_server']
 collection_domain = db['domain'] # _id, name, label, instructions, googleSelectedDetails: {id, title, sheetName, sheetId}
 collection_spreadsheets = db['spreadsheets'] # _id, filename, sheet_name, domain_id, columns: [{column_name}], rows: [{column_name: value}]
+collection_cell_words = db['cell_words'] # _id, domain, row_index, column_title, text, words: [{word, vector}]
 
 
 def truncate_collection(collection, domain: str):
