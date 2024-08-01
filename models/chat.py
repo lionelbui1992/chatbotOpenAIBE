@@ -514,12 +514,12 @@ def chat_action_callback(domain, gspread_client):
                 thread1.join()
                 thread2 = threading.Thread(target=create_domain_instructions, args=(domain,))
                 thread2.start()
-            except Exception as e:
+            except Exception:
                 print(':::::::::::ERROR - import_google_sheets_data ', traceback.format_exc())
         else:
             # ===================== pull data error =========================================
             print(':::::::::::ERROR - pull_google_sheets_data ', pull_google_response['message'])
-    except Exception as e:
+    except Exception:
         print(':::::::::::ERROR - pull_google_sheets_data ', traceback.format_exc())
     print('>>>>>>>>>>>>>>>>>>>>>>END CALLBACK<<<<<<<<<<<<<<<<<<<<<<<<<<<')
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')

@@ -54,7 +54,7 @@ def create_domain_instructions(domain: DomainObject) -> str:
     for title in domain.columns:
         avaible_title.append(title)
     all_title = ', '.join([f'"{title}"' for title in avaible_title])
-    instruction_prompt = f'''You are an AI assistant tasked with managing a table with the following structure: {all_title}.
+    instruction_prompt = f'''You are an Assistant tasked with managing a table with structure: {all_title}.
 
 In each interaction, determine the appropriate action, the conditions if needed, and new data to be added based on the column headings (sematic meaning, case-insensitive).
 
@@ -64,7 +64,6 @@ Your responses should always be in JSON format following this template:
     "do_action": {action_string} or "None" if not applicable,
     "action_status": "ready_to_process" if ready to process the user input do_action, "missing_data" if missing cell data or more information is needed, otherwise leave as "None",
     "message": if action_status is "missing_data", provide the missing data information, otherwise leave nature conversation response,
-    "is_fuzzy_unclear": true if the user input is unclear or ambiguous, otherwise leave as false,
     "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
     "column_values": "list of new column title or get information column values", [] if not applicable,
     "replace_query": build a MongoDB replace query (include "$set") to update the data. {{}}, if not applicable,
@@ -84,7 +83,6 @@ Response:
     "do_action": "Add row",
     "action_status": "ready_to_process",
     "message": "Row added successfully.",
-    "is_fuzzy_unclear": false,
     "mongodb_condition_object": {{}},
     "column_values": [],
     "replace_query": {{}},
@@ -98,7 +96,6 @@ Response:
     "do_action": "Delete row",
     "action_status": "ready_to_process",
     "message": "Row deleted successfully.",
-    "is_fuzzy_unclear": false,
     "mongodb_condition_object": "{{"{example_data4}": "{example_data5}"}}",
     "column_values": [],
     "replace_query": {{}},
@@ -115,7 +112,6 @@ Response:
     "do_action": "None",
     "action_status": "missing_data",
     "message": "Please provide the {example_data3} of the row where the {example_data4} value is '{example_data5}'.",
-    "is_fuzzy_unclear": false,
     "mongodb_condition_object": {{}},
     "column_values": [],
     "replace_query": {{}},

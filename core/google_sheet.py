@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 import traceback
 from flask import jsonify
 
@@ -111,10 +112,22 @@ def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspre
         SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
         sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
-        # get all data from Google Sheet
+        # get the headers from Google Sheet
+        headers = sheet.row_values(1)
+        # clearn spacing from headers
+        headers = [header.strip() for header in headers]
+        # update the headers in Google Sheet
+        sheet.update('A1', [headers])
+
+        shet_data = sheet.get_all_records()
+        # stripe the data containing empty spaces
+        for row in shet_data:
+            for key, value in row.items():
+                if isinstance(value, str):
+                    row[key] = value.strip()
         return {
             'status': 'success',
-            'data': sheet.get_all_records()
+            'data': shet_data
         }
     except Exception:
         print(':::::::::::ERROR - pull_google_sheets_data:::::::::::::', traceback.format_exc())
@@ -425,6 +438,7 @@ def get_cell_info(domain: str, input_text: str) -> list:
 def get_best_match(domain: str, input_text: str, limit=3) -> dict | None:
     """Get the best match from the cell words"""
 
+    start_time = time.time()
     result = get_cell_info(domain, input_text)
     if len(result) < 1:
         return None
@@ -438,4 +452,5 @@ def get_best_match(domain: str, input_text: str, limit=3) -> dict | None:
             best_match[item['column_title']] = item
     # sort by score
     best_match = sorted(best_match.values(), key=lambda x: x['score'], reverse=True)
+    print('Time to get best match: ', time.time() - start_time)
     return best_match[:limit] if len(best_match) > 0 else None

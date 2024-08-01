@@ -1,4 +1,5 @@
 import json
+import time
 from flask import current_app, jsonify
 
 def create_embedding(input_string:str):
@@ -25,6 +26,7 @@ def create_completion(messages: list):
     messages: list of messages <br />
     document from OpenAI: https://platform.openai.com/docs/guides/completions
     """
+    start_time = time.time()
     completions = current_app.openAIClient.chat.completions.create(
         model = current_app.config['OPENAI_MODEL'],
         messages = messages,
@@ -34,5 +36,6 @@ def create_completion(messages: list):
     # print('Create completetions: ', completions.usage.total_tokens, ' tokens, ', messages)
     print('Create completetions: ', completions.usage.total_tokens, ' tokens, ')
     print('::::::::::::::::::::::::::::::::::::::::::::::')
+    print('Time to create completions: ', time.time() - start_time)
     return completions
         
