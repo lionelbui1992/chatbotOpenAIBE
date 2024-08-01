@@ -1,7 +1,9 @@
 import traceback
 from bson import ObjectId
-from flask import jsonify
+
+from flask import current_app, jsonify
 from flask_jwt_extended import get_jwt_identity
+
 from core.domain import DomainObject
 from core.google_sheet import append_google_sheet_column, get_best_match
 from core.google_sheet import delete_google_sheet_row
@@ -11,10 +13,10 @@ from core.google_sheet import get_service
 from core.google_sheet import import_google_sheets_data
 from core.google_sheet import pull_google_sheets_data
 from core.google_sheet import update_many_row_value
-
 from core.input_actions import create_domain_instructions
 from core.openai import create_completion, create_embedding
 from core.util import Util
+
 from db import collection_embedded_server
 from db import collection_action
 from db import collection_attribute
@@ -23,7 +25,10 @@ from db import collection_spreadsheets
 from db import truncate_collection
 
 import json
+
 import threading
+from concurrent.futures import ThreadPoolExecutor
+
 
 def update_data_to_db(_id, plot):
     """
@@ -146,7 +151,7 @@ def embedding_search_info(search_vector, domain, limit=100):
         }
     }]
     info_funtion = collection_embedded_server.aggregate(pipeline)
-    
+
     return info_funtion
 
 def embedding_search_action(search_vector):
@@ -192,68 +197,73 @@ def get_chat_completions(request):
     # ===================== End Instructions ========================================
     # Input text -> AI -> RAG -> (JSON) -> Google sheet action/ summary collection/ get information -> RAG -> output messages
     # ===================== Verify user =============================================
-    current_user_id = get_jwt_identity()
-    current_user = collection_users.find_one({"_id": ObjectId(current_user_id)})
-    # ===================== End Verify user =========================================
-
+    current_user_id     = get_jwt_identity()
+    current_user        = None
+    try:
+        current_user    = collection_users.find_one({"_id": ObjectId(current_user_id)})
+    except Exception as e:
+        print(traceback.format_exc())
     if not current_user:
         return {"error": "Invalid user ID or token"}
+    # ===================== End Verify user =========================================
 
     # ===================== Input text ==============================================
-    data            = request.get_json()
-    domain          = DomainObject.load(current_user['domain'])
-    input_messages  = data.get('messages', [])
-    temp_messages   = []
+    app                 = current_app._get_current_object()
+    data                = request.get_json()
+    domain              = DomainObject.load(current_user['domain'])
+    input_messages      = data.get('messages', [])
+    input_text          = input_messages[-1].get('content', "")[0].get('text', "")
+    temp_messages       = []
+    action_info         = None
+    search_info         = None
+    completion_dict     = None
+    message_content     = None
+    action_message      = None
+    action_do           = None
+    action_status       = None
 
     if not input_messages:
         return jsonify({"error": "No messages provided"})
     
     # get latest message content text
-    # input_text      = input_messages[-1].get('content', "")[0].get('text', "")
     # set first item content text from domain instructions
-    print('domain.instructions: ', domain)
     input_messages[0]['content'][0]['text'] = domain.instructions
 
     # ===================== End Input text ==========================================
 
 
-    # ===================== AI Analysis =============================================
-    action_info = None
-    search_info = None
-    try:
-        action_completion = create_completion(messages=input_messages)
-        # convert response to dictionary
-        action_info = json.loads(action_completion.choices[0].message.content)
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('Action analysis: ', action_info, type(action_info))
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-    except Exception as e:
-        # this step can be skipped
-        print(':::::::::::ERROR - get_analysis_input_action ', traceback.format_exc())
-        # assistant_message = {
-        #     "role": "assistant",
-        #     "content": "Sorry, I can't analyze the action, please try again!"
-        # }
-        # input_messages.append(assistant_message)
-    # ===================== End AI Analysis =========================================
-
-
-    # ===================== DB Analysis =============================================
-    # try:
-    #     search_info = get_best_match(domain.name, input_messages[-1]['content'][0]['text'], 1)
-    #     print('search info: ', search_info)
-    # except Exception as e:
-    #     print(':::::::::::ERROR - get_best_match ', traceback.format_exc())
-    # ===================== End DB Analysis =========================================
+    # ===================== AI/DB Analysis ==========================================
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        ai_thread = executor.submit(create_completion_with_context, input_messages, app.app_context())
+        db_thread = executor.submit(get_best_match_with_context, domain.name, input_text, 1, app.app_context())
+        
+        # Retrieving the results
+        try:
+            completion_dict = ai_thread.result().to_dict()
+            message_content = completion_dict['choices'][0]['message']['content']
+            # convert response to dictionary
+            action_info = json.loads(message_content)
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('Action analysis: ', action_info, type(action_info))
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        except Exception as e:
+            print(':::::::::::ERROR - AI Analysis ', traceback.format_exc())
+            action_info = None
+        try:
+            search_info = db_thread.result()
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('DB analysis: ', search_info, type(search_info))
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        except Exception as e:
+            print(':::::::::::ERROR - DB Analysis ', traceback.format_exc())
+            search_info = None
+    # ===================== END AI/DB Analysis ======================================
 
 
     # ===================== RAG =====================================================
+    # ===================== RAG AI ==================================================
     if action_info:
         action_do               = action_info.get('do_action', 'None') # 'Add row', Add column, Delete row, Delete column, Edit cell, Get summary, Get information, None
         action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
@@ -286,6 +296,7 @@ def get_chat_completions(request):
                 print('>>>>>>>>>>>>>>>>>>>> "Add row" failed ', e)
             finally:
                 run_chat_action_callback(domain, gspread_client)
+        
         if action_do == 'Add column' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Add column"')
             for index, column_title in enumerate(action_column_values):
@@ -296,6 +307,7 @@ def get_chat_completions(request):
                     temp_messages.append(f"{index + 1}. Failed to add new column: {column_title}\n{add_column_response.message}")
                     print('>>>>>>>>>>>>>>>>>>>> "Add column" failed ', e)
             run_chat_action_callback(domain, gspread_client)
+        
         if action_do == 'Delete row' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Delete row"')
             sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
@@ -379,7 +391,6 @@ def get_chat_completions(request):
             finally:
                 run_chat_action_callback(domain, gspread_client)
 
-
         if action_do == 'Get summary' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Get summary"')
             # add domain filter
@@ -392,12 +403,12 @@ def get_chat_completions(request):
                 temp_messages.append(f"Found {infomation_result} row")
             else:
                 temp_messages.append("No row found")
+        
         if action_do == 'Get information' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Get information"')
             # add domain filter
             action_conditions['domain'] = current_user['domain']
             infomation_result = list(collection_spreadsheets.find(json.loads(json.dumps(action_conditions))))
-            print(infomation_result)
             # if no row found, return message
             if len(infomation_result) == 0:
                 temp_messages.append("No data found")
@@ -408,6 +419,7 @@ def get_chat_completions(request):
                 info.pop('row_index')
                 row_data = ', ' . join([f"{key}: {value}" for key, value in info.items()])
                 temp_messages.append('{}. {}'.format(index + 1, row_data))
+        
         if action_do == 'Insert from URL' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Insert from URL"')
             print(action_url)
@@ -419,13 +431,13 @@ def get_chat_completions(request):
                     {"role": "system", "content": "Your task is to extract specific information from the URL provided and format it as a JSON string. The JSON string should contain the following keys: {columns}".format(columns=heading_columns)},
                     {"role": "user", "content": "URL: {url}".format(url=action_url)},
                 ])
-                message_content = completion.choices[0].message.content
+                action_completion_content = completion.choices[0].message.content
                 # get content from ```json  ```
-                if '```json' in message_content:
-                    json_data = json.loads(message_content.split('```json')[1].split('```')[0])
+                if '```json' in action_completion_content:
+                    json_data = json.loads(action_completion_content.split('```json')[1].split('```')[0])
                     print('json_data: ', json_data)
                 else:
-                    json_data = json.loads(completion.choices[0].message.content)
+                    json_data = json.loads(action_completion_content)
                     print('json_data: ', json_data)
                 #  call append_google_sheet_row
                 sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
@@ -437,30 +449,45 @@ def get_chat_completions(request):
             except Exception as e:
                 print('>>>>>>>>>>>>>>>>>>>> "Insert from URL" failed ', e)
                 temp_messages.append("Failed to insert information from URL")
+    # ===================== END RAG AI ==============================================
 
-
+    # ===================== RAG DB ==================================================
+    if search_info and action_do == 'None':
+        if action_status == 'missing_data':
+            action_message = ''
+            temp_messages.append("\n\nDid you mean one of the following?")
+        else:
+            temp_messages.append("\n\nWe found related information:")
+        for message in search_info:
+            # temp_messages.append(message.get('title', 'None'))
+            search_item_data = f"\n\n{message.get('column_title')}: {message.get('text', '')}"
+            temp_messages.append(search_item_data)
+            print('>>>>>>>>>>>> search info: ', message)
+    # ===================== END RAG DB ==============================================
     # ===================== END RAG =================================================
 
-
-
-    # ===================== End Instructions ========================================
-    completion_dict = action_completion.to_dict()
-
+    # ===================== Update assitant message from RAG ========================
     if temp_messages:
-        action_message = action_message + "\n\n" + "\n\n".join(temp_messages)
-        message_content = completion_dict['choices'][0]['message']['content']
         try:
             # if message content is JSON string, add message to the end of JSON string
             json_data = json.loads(message_content)
-            json_data['message'] += action_message
+            json_data['message'] = action_message + "\n\n" + "\n\n".join(temp_messages)
             completion_dict['choices'][0]['message']['content'] = json.dumps(json_data)
         except Exception as e:
             # need full json data, will be process in short time
-            completion_dict['choices'][0]['message']['content'] = action_message
-            print(e)
+            completion_dict['choices'][0]['message']['content'] = action_message + "\n\n" + "\n\n".join(temp_messages)
+            print(':::::::::::ERROR - action_message ', traceback.format_exc())
+    # ===================== END Update assitant message from RAG ====================
 
-    # return the JSON string
     return completion_dict
+
+def create_completion_with_context(input_messages, app_context):
+    with app_context:
+        return create_completion(input_messages)
+
+def get_best_match_with_context(domain_name, content_text, param, app_context):
+    with app_context:
+        return get_best_match(domain_name, content_text, param)
    
 def chat_action_callback(domain, gspread_client):
     """

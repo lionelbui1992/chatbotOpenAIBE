@@ -400,9 +400,6 @@ def get_cell_info(domain: str, input_text: str) -> list:
             }
         },
         {
-            '$limit': 10
-        },
-        {
             '$project': {
                 '_id': 0,
                 'row_index': 1,
@@ -413,7 +410,15 @@ def get_cell_info(domain: str, input_text: str) -> list:
                     '$meta': 'searchScore'
                 }
             }
-        }
+        },
+        {
+            '$match': {
+                'score': { '$gt': 0.7 }
+            }
+        },
+        {
+            '$limit': 10
+        },
     ]))
 
 

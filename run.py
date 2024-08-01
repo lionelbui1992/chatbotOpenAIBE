@@ -39,9 +39,6 @@ app.config.from_object(Config)
 bcrypt = Bcrypt(app)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 86400  # 1 day
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000  # 30 days
-# app.config['BABEL_DEFAULT_LOCALE'] = 'en'
-# app.config['BABEL_SUPPORTED_LOCALES'] = ['en', 'es']
-# babel = Babel(app)
 jwt = JWTManager(app)
 
 users = []  # Temporary in-memory user store
@@ -49,8 +46,6 @@ users = []  # Temporary in-memory user store
 # Configure CORS to allow all domains for all routes and methods
 CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "PUT", "POST", "DELETE", "OPTIONS"], "allow_headers": ["Authorization", "Content-Type"]}})
 
-# Secret key for session management
-# app.secret_key = os.getenv('SECRET_KEY')
 
 app.openAIClient = OpenAI(
     api_key=app.config['OPENAI_API_KEY'],
@@ -256,7 +251,6 @@ def domain_v1():
     # call DomainObject methods here: load_all
     try:
         data = DomainObject.load_all()
-        # return list [{'name': 'domain.name', 'label': 'domain.label'}, ...]
         domain_list = [{'name': d.name, 'label': d.label} for d in data]
         return jsonify({'status': 'success', 'data': domain_list})
     except Exception as e:
