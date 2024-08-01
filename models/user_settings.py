@@ -1,7 +1,7 @@
 from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject
-from core.google_sheet import get_credentials, import_google_sheets_data, pull_google_sheets_data, get_gspread_client
+from core.google_sheet import get_credentials, import_google_sheets_data, import_rows, pull_google_sheets_data, get_gspread_client
 from core.input_actions import create_domain_instructions
 
 from db import collection_users, collection_spreadsheets
@@ -191,6 +191,9 @@ def set_user_setting_google(request):
 
                     instruction_prompt = create_domain_instructions(domain)
                     # print('instruction_prompt', instruction_prompt)
+
+                    # import cell words
+                    import_rows(rows)
 
                     if (len(rows) > 1):
                         response_message['message'] = 'From spreadsheet, imported ' + str(len(rows) - 1) + ' rows imported'

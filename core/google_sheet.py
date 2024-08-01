@@ -1,5 +1,8 @@
 import json
+import threading
+import traceback
 from flask import jsonify
+
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
@@ -7,7 +10,13 @@ import gspread
 
 from numpy import number
 from core.openai import create_embedding
-from db import collection_attribute, collection_embedded_server, collection_domain, collection_spreadsheets, truncate_collection
+
+from db import collection_attribute
+from db import collection_embedded_server
+from db import collection_domain
+from db import collection_spreadsheets
+from db import truncate_collection
+from db import collection_cell_words
 
 MESSAGE_CONSTANT = {
     'google_access_token_or_selected_details_not_provided': 'Google access token or selected details not provided',
@@ -88,17 +97,14 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
 
 
         return jsonify({'message': MESSAGE_CONSTANT['data_retrieved_and_printed_successfully']})
-    except Exception as e:
-        print(':::::::::::ERROR - get_google_sheets_data:::::::::::::', e)
-        error_message = str(e)
-        return jsonify({'message': 'An error occurred while retrieving data: {error_message}'})
+    except Exception:
+        print(':::::::::::ERROR - get_google_sheets_data:::::::::::::', traceback.format_exc())
+        return jsonify({'message': 'An error occurred while retrieving data: {error_message}'.format(error_message=traceback.format_exc())})
 
 def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspread.Client) -> dict:
     """
     Pull data from Google Sheets and store in MongoDB
     """
-
-    sheet_id = google_selected_details['sheetId']
 
     try:
         # open Google Sheet use URL or ID
@@ -110,12 +116,11 @@ def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspre
             'status': 'success',
             'data': sheet.get_all_records()
         }
-    except Exception as e:
-        print(':::::::::::ERROR - pull_google_sheets_data:::::::::::::', e)
-        error_message = str(e)
+    except Exception:
+        print(':::::::::::ERROR - pull_google_sheets_data:::::::::::::', traceback.format_exc())
         return {
             'status': 'error',
-            'message': 'An error occurred while retrieving data: {error_message}'
+            'message': 'An error occurred while retrieving data: {error_message}'.format(error_message=traceback.format_exc())
         }
 
 
@@ -230,7 +235,6 @@ def update_google_sheet_data(current_user, values: str, column_index: number, ro
         return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_row(google_selected_details: dict, gspread_client: gspread.Client, new_item) -> dict:
-    sheet_id = google_selected_details['sheetId']
     SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
     sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
@@ -239,7 +243,6 @@ def append_google_sheet_row(google_selected_details: dict, gspread_client: gspre
     return append_response
 
 def append_google_sheet_column(google_selected_details: dict, gspread_client: gspread.Client, column_name: str) -> dict:
-    sheet_id = google_selected_details['sheetId']
     SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
     sheet = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
@@ -329,3 +332,105 @@ def update_many_row_value(service, spreadsheet_id: str, sheet_id: str, row_value
     # Print the response
     print(json.dumps(response, indent=4))
     return response
+
+def import_rows(rows):
+    domain = None
+    if len(rows) > 0:
+        domain = rows[0].get('domain')
+        truncate_collection(collection_cell_words, domain)
+    threads = []
+    for row in rows:
+        try:
+            thread = threading.Thread(target=process_row, args=(row,))
+            threads.append(thread)
+            thread.start()
+        except Exception:
+            print(traceback.format_exc())
+            return False
+    for thread in threads:
+        thread.join()
+
+def process_row(row):
+    # print('ROW:ROW:ROW:ROW:', row)
+    row_index = row.get('row_index')
+    domain = row.get('domain')
+    insert_data = list()
+
+    # remove _id if exists
+    row.pop('_id', None)
+    row.pop('domain', None)
+    row.pop('row_index', None)
+    
+    for column_title, cell_value in row.items():
+        if isinstance(cell_value, int) or isinstance(cell_value, float):
+            cell_value = str(cell_value)
+        insert_data.append({
+            'domain': domain,
+            'row_index': row_index,
+            'column_title': column_title,
+            'text': cell_value,
+            # 'word': cell_value,
+            # 'vector': words_to_vectors(cell_value).tolist()
+        })
+
+    if len(insert_data) > 0:
+        collection_cell_words.insert_many(insert_data)
+
+def get_cell_info(domain: str, input_text: str) -> list:
+    """Search cell information from MongoDB"""
+
+    return list(collection_cell_words.aggregate([
+        {
+            "$search": {
+                "index": "default",
+                "text": {
+                    "query": input_text,
+                    "path": ["text"],
+                    "fuzzy": {
+                        "maxEdits": 2,
+                        "prefixLength": 0,
+                        "maxExpansions": 50
+                    }
+                }
+            },
+        },
+        {
+            '$match': {
+                'domain': domain
+            }
+        },
+        {
+            '$limit': 10
+        },
+        {
+            '$project': {
+                '_id': 0,
+                'row_index': 1,
+                'column_title': 1,
+                'text': 1,
+                'word': 1,
+                'score': {
+                    '$meta': 'searchScore'
+                }
+            }
+        }
+    ]))
+
+
+def get_best_match(domain: str, input_text: str, limit=3) -> dict | None:
+    """Get the best match from the cell words"""
+
+    result = get_cell_info(domain, input_text)
+    if len(result) < 1:
+        return None
+    # get list of column_title, if row_index is the same get the highest score
+    best_match = dict()
+    for item in result:
+        if item['column_title'] in best_match:
+            if item['score'] > best_match[item['column_title']]['score']:
+                best_match[item['column_title']] = item
+        else:
+            best_match[item['column_title']] = item
+    # sort by score
+    best_match = sorted(best_match.values(), key=lambda x: x['score'], reverse=True)
+    return best_match[:limit] if len(best_match) > 0 else None

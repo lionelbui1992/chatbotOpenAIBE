@@ -3,7 +3,7 @@ from bson import ObjectId
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column
+from core.google_sheet import append_google_sheet_column, get_best_match
 from core.google_sheet import delete_google_sheet_row
 from core.google_sheet import get_credentials
 from core.google_sheet import get_gspread_client
@@ -219,6 +219,7 @@ def get_chat_completions(request):
 
     # ===================== AI Analysis =============================================
     action_info = None
+    search_info = None
     try:
         action_completion = create_completion(messages=input_messages)
         # convert response to dictionary
@@ -241,6 +242,15 @@ def get_chat_completions(request):
         # }
         # input_messages.append(assistant_message)
     # ===================== End AI Analysis =========================================
+
+
+    # ===================== DB Analysis =============================================
+    # try:
+    #     search_info = get_best_match(domain.name, input_messages[-1]['content'][0]['text'], 1)
+    #     print('search info: ', search_info)
+    # except Exception as e:
+    #     print(':::::::::::ERROR - get_best_match ', traceback.format_exc())
+    # ===================== End DB Analysis =========================================
 
 
     # ===================== RAG =====================================================
