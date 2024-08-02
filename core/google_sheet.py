@@ -10,11 +10,11 @@ import gspread
 
 from core.openai import create_embedding
 
-from db import truncate_collection
 from db import collection_attribute
 from db import collection_embedded_server
 from db import collection_spreadsheets
 from db import collection_cell_words
+from db import truncate_collection
 
 MESSAGE_CONSTANT = {
     'google_access_token_or_selected_details_not_provided': 'Google access token or selected details not provided',

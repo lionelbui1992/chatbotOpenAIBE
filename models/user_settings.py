@@ -1,10 +1,15 @@
 from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject
-from core.google_sheet import get_credentials, import_google_sheets_data, import_rows, pull_google_sheets_data, get_gspread_client
+from core.google_sheet import get_credentials
+from core.google_sheet import import_google_sheets_data
+from core.google_sheet import import_rows
+from core.google_sheet import pull_google_sheets_data
+from core.google_sheet import get_gspread_client
 from core.input_actions import create_domain_instructions
 
-from db import collection_users, collection_spreadsheets
+from db import collection_users
+from db import collection_spreadsheets
 from db import truncate_collection
 
 from bson.objectid import ObjectId

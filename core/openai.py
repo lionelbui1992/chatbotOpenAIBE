@@ -1,6 +1,5 @@
-import json
 import time
-from flask import current_app, jsonify
+from flask import current_app
 
 def create_embedding(input_string:str):
     """

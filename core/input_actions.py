@@ -1,5 +1,4 @@
 from core.domain import DomainObject
-from core.openai import create_completion
 from db import collection_spreadsheets
 
 def create_domain_instructions(domain: DomainObject) -> str:
