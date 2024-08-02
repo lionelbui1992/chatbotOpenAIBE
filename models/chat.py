@@ -56,64 +56,6 @@ def add_data_to_db(title, plot, embedding):
     )
     return collection_embedded_server.find_one({"title": title})
 
-def embedding_search_attribute(title, domain):
-    """
-    Search for attributes in the database based on the given title and domain.
-    This is filter mapping, not sematic search
-    """
-    
-    info_funtion = collection_attribute.aggregate([
-        {
-            '$match': {
-                'title': title, 
-                'domain': domain
-            }
-        }, {
-            '$project': {
-                'title': 1, 
-                'column_index': 1, 
-                'domain': 1
-            }
-        }
-    ])
-
-    # for message in info_funtion:
-    #     print('>>>>>>>>>>>> search attribute: ', message.get('column_index', -1))
-    
-    return info_funtion
-
-def embedding_search_total(search_vector, domain):
-    """
-    Search for total in the database based on the given searchVector and domain.
-    """
-    pipeline = [
-    {
-        '$vectorSearch': {
-        'index': 'vector_index', 
-        'path': 'plot_embedding', 
-        'queryVector': search_vector, 
-        'numCandidates': 150, 
-        'limit': 1
-        }
-    }, {
-        '$match': {
-            'domain': domain
-        }
-    }, {
-        '$project': {
-        '_id': 1,
-        'title': 1, 
-        'total': 1,
-        'domain': 1,
-        'score': {
-            '$meta': 'vectorSearchScore'
-        }
-        }
-    }]
-    info_funtion = collection_action.aggregate(pipeline)
-    
-    return info_funtion
-
 def embedding_search_info(search_vector, domain, limit=100):
     """
     Search for information in the database based on the given search_vector, domain, and limit.
@@ -208,7 +150,6 @@ def get_chat_completions(request):
     # ===================== End Verify user =========================================
 
     # ===================== Input text ==============================================
-    app                 = current_app._get_current_object()
     data                = request.get_json()
     domain              = DomainObject.load(current_user['domain'])
     input_messages      = data.get('messages', [])
@@ -233,34 +174,35 @@ def get_chat_completions(request):
 
 
     # ===================== AI/DB Analysis ==========================================
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        ai_thread = executor.submit(create_completion_with_context, input_messages, app.app_context())
-        db_thread = executor.submit(get_best_match_with_context, domain.name, input_text, 1, app.app_context())
-        
-        # Retrieving the results
-        try:
-            completion_dict = ai_thread.result().to_dict()
-            message_content = completion_dict['choices'][0]['message']['content']
-            # convert response to dictionary
-            action_info = json.loads(message_content)
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            print('Action analysis: ', action_info, type(action_info))
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        except Exception as e:
-            print(':::::::::::ERROR - AI Analysis ', traceback.format_exc())
-            action_info = None
-        try:
-            search_info = db_thread.result()
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            print('DB analysis: ', search_info, type(search_info))
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-            print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        except Exception as e:
-            print(':::::::::::ERROR - DB Analysis ', traceback.format_exc())
-            search_info = None
-    # ===================== END AI/DB Analysis ======================================
+    search_info = get_best_match(domain.name, input_text, 2)
 
+    if search_info:
+        # temp_system_message_content = list()
+        # remove latest message
+        latest_message =input_messages.pop(-1)
+        for message in search_info:
+            # temp_system_message_content.append(f"{message.get('column_title', 'None')}: {message.get('text', 'None')}")
+            input_messages.append({
+                "role": "system",
+                "content": f'''"{message.get('column_title', 'None')}" include: "{message.get('text', 'None')}"'''
+            })
+        print('>>>DBRAG: ', input_messages)
+        input_messages.append(latest_message)
+
+    try:
+        # ===================== AI Analysis ==========================================
+        # create completion with context
+        completion_dict = create_completion(input_messages).to_dict()
+        message_content = completion_dict['choices'][0]['message']['content']
+        # convert response to dictionary
+        action_info = json.loads(message_content)
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        print('Action analysis: ', action_info, type(action_info))
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    except Exception as e:
+        print(':::::::::::ERROR - AI Analysis ', traceback.format_exc())
+        action_info = None
 
     # ===================== RAG =====================================================
     # ===================== RAG AI ==================================================
@@ -452,17 +394,17 @@ def get_chat_completions(request):
     # ===================== END RAG AI ==============================================
 
     # ===================== RAG DB ==================================================
-    if search_info and action_do == 'None':
-        if action_status == 'missing_data':
-            action_message = ''
-            temp_messages.append("\n\nDid you mean one of the following?")
-        else:
-            temp_messages.append("\n\nWe found related information:")
-        for message in search_info:
-            # temp_messages.append(message.get('title', 'None'))
-            search_item_data = f"\n\n{message.get('column_title')}: {message.get('text', '')}"
-            temp_messages.append(search_item_data)
-            print('>>>>>>>>>>>> search info: ', message)
+    # if search_info and action_do == 'None':
+    #     if action_status == 'missing_data':
+    #         action_message = ''
+    #         temp_messages.append("\n\nDid you mean one of the following?")
+    #     else:
+    #         temp_messages.append("\n\nWe found related information:")
+    #     for message in search_info:
+    #         # temp_messages.append(message.get('title', 'None'))
+    #         search_item_data = f"\n\n{message.get('column_title')}: {message.get('text', '')}"
+    #         temp_messages.append(search_item_data)
+    #         print('>>>>>>>>>>>> search info: ', message)
     # ===================== END RAG DB ==============================================
     # ===================== END RAG =================================================
 
@@ -481,14 +423,6 @@ def get_chat_completions(request):
 
     return completion_dict
 
-def create_completion_with_context(input_messages, app_context):
-    with app_context:
-        return create_completion(input_messages)
-
-def get_best_match_with_context(domain_name, content_text, param, app_context):
-    with app_context:
-        return get_best_match(domain_name, content_text, param)
-   
 def chat_action_callback(domain, gspread_client):
     """
     Chat action callback - re import google sheet data
