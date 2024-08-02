@@ -1,11 +1,12 @@
 import traceback
 from bson import ObjectId
 
-from flask import current_app, jsonify
+from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject
-from core.google_sheet import append_google_sheet_column, get_best_match
+from core.google_sheet import append_google_sheet_column
+from core.google_sheet import get_best_match
 from core.google_sheet import delete_google_sheet_row
 from core.google_sheet import get_credentials
 from core.google_sheet import get_gspread_client
@@ -14,12 +15,9 @@ from core.google_sheet import import_google_sheets_data
 from core.google_sheet import pull_google_sheets_data
 from core.google_sheet import update_many_row_value
 from core.input_actions import create_domain_instructions
-from core.openai import create_completion, create_embedding
+from core.openai import create_completion
 from core.util import Util
 
-from db import collection_embedded_server
-from db import collection_action
-from db import collection_attribute
 from db import collection_users
 from db import collection_spreadsheets
 from db import truncate_collection
@@ -27,110 +25,6 @@ from db import truncate_collection
 import json
 
 import threading
-from concurrent.futures import ThreadPoolExecutor
-
-
-def update_data_to_db(_id, plot):
-    """
-    Update data in the database with the given _id and plot.
-    """
-    collection_embedded_server.update_one(
-        {"_id": _id},
-        {"$set": {"plot": plot}}
-    )
-    return collection_embedded_server.find_one({"_id": _id})
-
-def add_data_to_db(title, plot, embedding):
-    """
-    Add data to the database with the given title, plot, and embedding.
-    """
-    collection_embedded_server.insert_one(
-        {
-            "title": title,
-            "plot": plot,
-            "plot_embedding": embedding,
-            "type": "server",
-            "row_index": 0,
-            "column_count": len(plot)
-        }
-    )
-    return collection_embedded_server.find_one({"title": title})
-
-def embedding_search_info(search_vector, domain, limit=100):
-    """
-    Search for information in the database based on the given search_vector, domain, and limit.
-    """
-    pipeline = [{
-        '$vectorSearch': {
-            'index': 'vector_index', 
-            'path': 'plot_embedding', 
-            'queryVector': search_vector, 
-            'numCandidates': 150, 
-            'limit': limit
-        }
-    }, {
-        '$match': {
-            'domain': domain
-        }
-    }, {
-        '$project': {
-            '_id': 1, 
-            'plot': 1, 
-            'title': 1, 
-            'header_column': 1,
-            'row_index': 1,
-            'column_count': 1,
-            'domain': 1,
-            'score': {
-                '$meta': 'vectorSearchScore'
-            }
-        }
-    },
-    {
-        '$sort': {
-            # sort by score in increasing order
-            'score': -1
-        }
-    }]
-    info_funtion = collection_embedded_server.aggregate(pipeline)
-
-    return info_funtion
-
-def embedding_search_action(search_vector):
-    """
-    Search for action in the database based on the given searchVector.
-    """
-    pipeline = [
-    {
-        '$vectorSearch': {
-        'index': 'vector_index', 
-        'path': 'plot_embedding', 
-        'queryVector': search_vector, 
-        'numCandidates': 150, 
-        'limit': 1
-        }
-    }, {
-        '$project': {
-        '_id': 1, 
-        'title': 1, 
-        'score': {
-            '$meta': 'vectorSearchScore'
-        }
-        }
-    }]
-    action_funtion = collection_action.aggregate(pipeline)
-    action = 0
-    for message in action_funtion:
-        action = message['score']
-
-    return action
-
-def embedding_function(input_text):
-    """
-    Get the embedding for the given input_text.
-    """
-    response = create_embedding(input_string = input_text)
-    return response.data[0].embedding
 
 def get_chat_completions(request):
     """
@@ -181,12 +75,12 @@ def get_chat_completions(request):
         # remove latest message
         latest_message =input_messages.pop(-1)
         for message in search_info:
-            # temp_system_message_content.append(f"{message.get('column_title', 'None')}: {message.get('text', 'None')}")
+            rag_message = f'''"{message.get('column_title', 'None')}" include: "{message.get('text', 'None')}"'''
             input_messages.append({
                 "role": "system",
-                "content": f'''"{message.get('column_title', 'None')}" include: "{message.get('text', 'None')}"'''
+                "content": rag_message
             })
-        print('>>>DBRAG: ', input_messages)
+            print('>>>DBRAG with: ', rag_message, message.get('score', 0))
         input_messages.append(latest_message)
 
     try:
@@ -355,7 +249,6 @@ def get_chat_completions(request):
             if len(infomation_result) == 0:
                 temp_messages.append("No data found")
             for index, info in enumerate(infomation_result):
-                print('>>>>>>>>>>>>>>>>>>>> found info: ', info)
                 info.pop('_id')
                 info.pop('domain')
                 info.pop('row_index')
@@ -392,20 +285,6 @@ def get_chat_completions(request):
                 print('>>>>>>>>>>>>>>>>>>>> "Insert from URL" failed ', e)
                 temp_messages.append("Failed to insert information from URL")
     # ===================== END RAG AI ==============================================
-
-    # ===================== RAG DB ==================================================
-    # if search_info and action_do == 'None':
-    #     if action_status == 'missing_data':
-    #         action_message = ''
-    #         temp_messages.append("\n\nDid you mean one of the following?")
-    #     else:
-    #         temp_messages.append("\n\nWe found related information:")
-    #     for message in search_info:
-    #         # temp_messages.append(message.get('title', 'None'))
-    #         search_item_data = f"\n\n{message.get('column_title')}: {message.get('text', '')}"
-    #         temp_messages.append(search_item_data)
-    #         print('>>>>>>>>>>>> search info: ', message)
-    # ===================== END RAG DB ==============================================
     # ===================== END RAG =================================================
 
     # ===================== Update assitant message from RAG ========================

@@ -1,6 +1,5 @@
 import json
 import threading
-import time
 import traceback
 from flask import jsonify
 
@@ -9,14 +8,12 @@ from googleapiclient.discovery import build
 
 import gspread
 
-from numpy import number
 from core.openai import create_embedding
 
+from db import truncate_collection
 from db import collection_attribute
 from db import collection_embedded_server
-from db import collection_domain
 from db import collection_spreadsheets
-from db import truncate_collection
 from db import collection_cell_words
 
 MESSAGE_CONSTANT = {
@@ -25,14 +22,18 @@ MESSAGE_CONSTANT = {
     'data_retrieved_and_printed_successfully': 'Data retrieved and printed successfully',
 }
 
+
 def get_credentials(google_access_token: str) -> Credentials:
     return Credentials(token=google_access_token)
+
 
 def get_service(credentials: Credentials) -> build:
     return build('sheets', 'v4', credentials=credentials)
 
+
 def get_gspread_client(creds: Credentials) -> gspread.Client:
     return gspread.authorize(creds)
+
 
 def get_google_sheets_data(current_user, google_access_token, google_selected_details):
     _domain = current_user['domain']
@@ -101,6 +102,7 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
     except Exception:
         print(':::::::::::ERROR - get_google_sheets_data:::::::::::::', traceback.format_exc())
         return jsonify({'message': 'An error occurred while retrieving data: {error_message}'.format(error_message=traceback.format_exc())})
+
 
 def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspread.Client) -> dict:
     """
@@ -182,6 +184,7 @@ def import_heading_attributes(_domain, headers):
     except Exception as e:
         print(':::::::::::ERROR - import_heading_attributes:::::::::::::', e)
 
+
 def import_embedding_data(_domain, row, headers, index):
     try:
         row_string = ', ' . join(row)
@@ -206,46 +209,6 @@ def import_embedding_data(_domain, row, headers, index):
     except Exception as e:
         print(':::::::::::ERROR - import_embedding_data:::::::::::::', e)
 
-def update_google_sheet_data(current_user, values: str, column_index: number, row_index: number):
-
-    print(values)
-
-    domain_data = collection_domain.find_one({"domain": current_user['domain']})
-
-    google_access_token = current_user['settings']['googleAccessToken']
-    google_selected_details = []
-    if domain_data:
-        google_selected_details = domain_data['googleSelectedDetails']
-
-    if not google_access_token or not google_selected_details:
-        return jsonify({'message': MESSAGE_CONSTANT['google_access_token_or_selected_details_not_provided']})
-    try:
-        # Create Google API credentials from the access token
-        credentials = Credentials(token=google_access_token)
-        service = build('sheets', 'v4', credentials=credentials)
-        for detail in google_selected_details:
-            sheet_id = detail['sheetId']
-            sheet_name = detail['title']
-            range_name = f'{sheet_name}!A1:AE999'
-            result = service.spreadsheets().values().get(spreadsheetId=sheet_id, range=range_name).execute()
-            rows = result.get('values', [])
-            if not rows:
-                print(MESSAGE_CONSTANT['no_data_found'])
-            else:
-                # update the value of the cell
-                old_value = rows[row_index][column_index]
-                print(old_value)
-                rows[row_index][column_index] = values
-                result = service.spreadsheets().values().update(
-                    spreadsheetId=sheet_id, range=range_name,
-                    valueInputOption='RAW', body={'values': rows}).execute()
-                print(f'Value updated from {old_value} to {values}.')
-        
-
-        return jsonify({'message': MESSAGE_CONSTANT['data_retrieved_and_printed_successfully']})
-    except Exception as e:
-        print(':::::::::::ERROR - update_google_sheet_data:::::::::::::', e)
-        return jsonify({'message': 'An error occurred while retrieving data'})
 
 def append_google_sheet_row(google_selected_details: dict, gspread_client: gspread.Client, new_item) -> dict:
     SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
@@ -254,6 +217,7 @@ def append_google_sheet_row(google_selected_details: dict, gspread_client: gspre
     append_response = sheet.append_row(list(new_item.values()))
     print('Append response:', append_response)
     return append_response
+
 
 def append_google_sheet_column(google_selected_details: dict, gspread_client: gspread.Client, column_name: str) -> dict:
     SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/{sheet_id}'.format(sheet_id=google_selected_details['sheetId'])
@@ -293,6 +257,7 @@ def delete_google_sheet_row(service, spreadsheet_id: str, sheet_id: str, row_ind
     # Print the response
     print(json.dumps(response, indent=4))
     return response
+
 
 def update_many_row_value(service, spreadsheet_id: str, sheet_id: str, row_values: list) -> dict:
     """Update a cell value in Google Sheet"""
@@ -346,6 +311,7 @@ def update_many_row_value(service, spreadsheet_id: str, sheet_id: str, row_value
     print(json.dumps(response, indent=4))
     return response
 
+
 def import_rows(rows):
     domain = None
     if len(rows) > 0:
@@ -362,6 +328,7 @@ def import_rows(rows):
             return False
     for thread in threads:
         thread.join()
+
 
 def process_row(row):
     # print('ROW:ROW:ROW:ROW:', row)
@@ -388,6 +355,7 @@ def process_row(row):
 
     if len(insert_data) > 0:
         collection_cell_words.insert_many(insert_data)
+
 
 def get_cell_info(domain: str, input_text: str) -> list:
     """Search cell information from MongoDB"""
@@ -438,7 +406,6 @@ def get_cell_info(domain: str, input_text: str) -> list:
 def get_best_match(domain: str, input_text: str, limit=3) -> dict | None:
     """Get the best match from the cell words"""
 
-    start_time = time.time()
     result = get_cell_info(domain, input_text)
     if len(result) < 1:
         return None
@@ -452,5 +419,4 @@ def get_best_match(domain: str, input_text: str, limit=3) -> dict | None:
             best_match[item['column_title']] = item
     # sort by score
     best_match = sorted(best_match.values(), key=lambda x: x['score'], reverse=True)
-    print('Time to get best match: ', time.time() - start_time)
     return best_match[:limit] if len(best_match) > 0 else None
