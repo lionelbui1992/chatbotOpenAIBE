@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from flask import jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity
 from core.domain import DomainObject

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import time
 from bson import ObjectId
 from flask_jwt_extended import get_jwt_identity

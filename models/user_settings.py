@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from flask_jwt_extended import get_jwt_identity
 
 from core.domain import DomainObject

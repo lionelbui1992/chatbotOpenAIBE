@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import traceback
 from bson import ObjectId
 
@@ -82,6 +84,8 @@ def get_chat_completions(request):
             })
             print('>>>DBRAG with: ', rag_message.encode('utf-8'), message.get('score', 0))
         input_messages.append(latest_message)
+    else:
+        print('>>>DBRAG with: No match')
 
     try:
         # ===================== AI Analysis ==========================================
