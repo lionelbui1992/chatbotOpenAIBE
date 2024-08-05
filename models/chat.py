@@ -247,6 +247,8 @@ def get_chat_completions(request):
             infomation_result = list(collection_spreadsheets.find(json.loads(json.dumps(action_conditions))))
             # if no row found, return message
             if len(infomation_result) == 0:
+                # remove action_message
+                action_message = ""
                 temp_messages.append("No data found")
             for index, info in enumerate(infomation_result):
                 info.pop('_id')

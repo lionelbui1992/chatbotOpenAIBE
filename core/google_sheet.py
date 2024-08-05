@@ -61,7 +61,7 @@ def get_google_sheets_data(current_user, google_access_token, google_selected_de
         rows = result.get('values', [])
 
         if not rows:
-            print(MESSAGE_CONSTANT['no_data_found'])
+            print('No data found')
         else:
             headers = rows[0]
             # remove the header row
@@ -142,10 +142,10 @@ def pull_google_sheets_data(google_selected_details: dict, gspread_client: gspre
 def import_google_sheets_data(_domain, rows: list) -> dict:
     # ===================== Print log ===============================================
     if not rows:
-        print(MESSAGE_CONSTANT['no_data_found'])
+        print('No data found')
         return {
             'status': 'error',
-            'message': MESSAGE_CONSTANT['no_data_found']
+            'message': 'No data found'
         }
     # ===================== End Print log ===========================================
 
@@ -157,7 +157,7 @@ def import_google_sheets_data(_domain, rows: list) -> dict:
         row['domain'] = _domain.name
         row['row_index'] = index + 1
     # import all rows to mongodb
-    print('Importing data to MongoDB... ', len(rows), ' rows')
+    print(_domain.name, ' - Importing data to MongoDB... ', len(rows), ' rows')
     return collection_spreadsheets.insert_many(rows)
 
 
