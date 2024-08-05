@@ -80,7 +80,7 @@ def get_chat_completions(request):
                 "role": "system",
                 "content": rag_message
             })
-            print('>>>DBRAG with: ', rag_message, message.get('score', 0))
+            print('>>>DBRAG with: ', rag_message.encode('utf-8'), message.get('score', 0))
         input_messages.append(latest_message)
 
     try:
