@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from core.classify import Classify
 from core.domain import DomainObject
 from db import collection_spreadsheets
 
-def create_domain_instructions(domain: DomainObject) -> str:
+def create_domain_instructions(domain: DomainObject, rows: list) -> str:
     """
     Get user instructions
     """
@@ -25,6 +26,13 @@ def create_domain_instructions(domain: DomainObject) -> str:
     example_data4 = ''
     example_data5 = ''
 
+    instruction_classify = Classify(rows).classify_data()
+    
+    print(Classify(rows).classify_data())
+
+    instruction_classify_text = 'Column headings classified and refined:\n'
+    for key, values in instruction_classify.items():
+        instruction_classify_text += f'\n{key} includes {len(values)} unique values: {", ".join([str(value) for value in values])}'
 
     # get random 3 data from collection_spreadsheets
     search_result = get_random_spreadsheet_data(domain, number_of_data=1)
@@ -32,8 +40,12 @@ def create_domain_instructions(domain: DomainObject) -> str:
         # message type is dict
         # set '-' if the value is empty
         for key, value in result_item.items():
+            # replace empty value with '-'
             if value == '':
                 result_item[key] = '-'
+            # trim value if it is too long
+            if isinstance(value, str) and len(value) > 30:
+                result_item[key] = value[:30] + '...'
         if (len(result_item) > 0):
             # example_data1 is array of key values, separated by comma
             example_data1 = ', '.join([f'{key} \'{value}\'' for key, value in result_item.items()])
@@ -55,7 +67,10 @@ def create_domain_instructions(domain: DomainObject) -> str:
     for title in domain.columns:
         avaible_title.append(title)
     all_title = ', '.join([f'"{title}"' for title in avaible_title])
+    all_title_project = ', '.join([f'"{title}": 1' for title in avaible_title])
     instruction_prompt = f'''You are an Assistant tasked with managing a table with structure: {all_title}.
+
+{instruction_classify_text}
 
 In each interaction, determine the appropriate action, the conditions if needed, and new data to be added based on the column headings (sematic meaning, case-insensitive).
 
@@ -64,8 +79,10 @@ Your responses should always be in JSON format following this template:
 {{
     "do_action": {action_string} or "None" if not applicable,
     "action_status": "ready_to_process" if ready to process the user input do_action, "missing_data" if missing cell data or more information is needed, otherwise leave as "None",
-    "message": if action_status is "missing_data", provide the missing data information, otherwise leave nature conversation response,
+    "message": if action_status is "missing_data", provide the missing data information, otherwise leave nature conversation based on the input,
     "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
+    "mongodb_sample": Random item number, "" if not applicable,
+    "mongodb_project": from input request, build a MongoDB $project object to get specific data. "" if not applicable,
     "column_values": "list of new column title or get information column values", [] if not applicable,
     "replace_query": build a MongoDB replace query (include "$set") to update the data. {{}}, if not applicable,
     "row_values": a list of new rows values. [] if is Edit cell or not applicable, value should be full row data in the order of the table columns. All column values required in this list,
@@ -85,19 +102,38 @@ Response:
     "action_status": "ready_to_process",
     "message": "Row added successfully.",
     "mongodb_condition_object": {{}},
+    "mongodb_sample": "",
+    "mongodb_project": "",
     "column_values": [],
     "replace_query": {{}},
     "row_values": [{{{example_data2}}}],
     "url": ""
 }}
 
-User: "Delete the row with {example_data4} {example_data5}"
+User: "Delete the row {example_data4} {example_data5}"
 Response:
 {{
     "do_action": "Delete row",
     "action_status": "ready_to_process",
     "message": "Row deleted successfully.",
-    "mongodb_condition_object": "{{"{example_data4}": "{example_data5}"}}",
+    "mongodb_condition_object": {{"{example_data4}": "{example_data5}"}},
+    "mongodb_sample": "",
+    "mongodb_project": "",
+    "column_values": [],
+    "replace_query": {{}},
+    "row_values": [],
+    "url": ""
+}}
+
+User: List random 3 {avaible_title[0]}
+Response:
+{{
+    "do_action": "Get information",
+    "action_status": "ready_to_process",
+    "message": "Information retrieved successfully:",
+    "mongodb_condition_object": {{}},
+    "mongodb_sample": "3",
+    "mongodb_project": {{"_id": 0, "{avaible_title[0]}": 1}},
     "column_values": [],
     "replace_query": {{}},
     "row_values": [],
@@ -107,18 +143,22 @@ Response:
 If additional details are needed for an action, return the action_status "missing_data" with a message indicating the missing information.
 For instance:
 
-User: "Update the {example_data3} for the row where {example_data4} is '{example_data5}'"
+User: Update {example_data3} where {example_data4} is {example_data5}
 Response:
 {{
     "do_action": "None",
     "action_status": "missing_data",
-    "message": "Please provide the {example_data3} of the row where the {example_data4} value is '{example_data5}'.",
+    "message": "Please provide new value of {example_data3} where the {example_data4} is '{example_data5}'.",
     "mongodb_condition_object": {{}},
+    "mongodb_sample": "",
+    "mongodb_project": "",
     "column_values": [],
     "replace_query": {{}},
     "row_values": [],
     "url": ""
 }}
+
+If users give some short keyword, you should search the table data and give the information back to the user.
 
 Ask users to provide all details for each action to avoid "missing_data" status where possible. The "row_values" must be list of {{key:value}} and reordered if the column titles are not in the correct order.
 

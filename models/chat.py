@@ -93,6 +93,7 @@ def get_chat_completions(request):
         completion_dict = create_completion(input_messages).to_dict()
         message_content = completion_dict['choices'][0]['message']['content']
         # convert response to dictionary
+        print(message_content)
         action_info = json.loads(message_content)
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
@@ -331,7 +332,7 @@ def chat_action_callback(domain, gspread_client):
                 thread1 = threading.Thread(target=import_google_sheets_data, args=(domain, rows))
                 thread1.start()
                 thread1.join()
-                thread2 = threading.Thread(target=create_domain_instructions, args=(domain,))
+                thread2 = threading.Thread(target=create_domain_instructions, args=(domain, rows, ))
                 thread2.start()
             except Exception:
                 print(':::::::::::ERROR - import_google_sheets_data ', traceback.format_exc())

@@ -98,7 +98,7 @@ def set_user_settings(request):
                     import_google_sheets_data(domain, rows)
                     #  rebuild instructions
 
-                    instruction_prompt = create_domain_instructions(domain)
+                    instruction_prompt = create_domain_instructions(domain, rows)
                     # print('instruction_prompt', instruction_prompt)
                     if (len(rows) > 1):
                         response_message['message'] = 'From spreadsheet, imported ' + str(len(rows) - 1) + ' rows imported'
@@ -196,7 +196,7 @@ def set_user_setting_google(request):
 
                     #  rebuild instructions
 
-                    instruction_prompt = create_domain_instructions(domain)
+                    instruction_prompt = create_domain_instructions(domain, rows)
                     # print('instruction_prompt', instruction_prompt)
 
                     # import cell words
