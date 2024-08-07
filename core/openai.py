@@ -28,6 +28,7 @@ def create_completion(messages: list):
     document from OpenAI: https://platform.openai.com/docs/guides/completions
     """
     start_time = time.time()
+    # print(messages)
     completions = current_app.openAIClient.chat.completions.create(
         model = current_app.config['OPENAI_MODEL'],
         messages = messages,

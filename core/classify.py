@@ -10,8 +10,8 @@ class Classify:
         df = pd.DataFrame(self.data)
 
         # Display the initial data
-        print("Initial data:")
-        print(df)
+        # print("Initial data:")
+        # print(df)
 
         # Normalize data: remove unnecessary columns, duplicate data
         df = df.dropna(axis=1, how='all') # Remove columns with all empty values
@@ -19,6 +19,13 @@ class Classify:
         # remove column _id
         if '_id' in df.columns:
             df = df.drop(columns=['_id'])
+        # remove column row_index
+        if 'row_index' in df.columns:
+            df = df.drop(columns=['row_index'])
+
+        #  remove column domain
+        if 'domain' in df.columns:
+            df = df.drop(columns=['domain'])
 
         # Classify and summarize data by title
         classified_data = {}
@@ -47,17 +54,17 @@ class Classify:
                 filtered_data[key] = values
 
         # Display the classified and refined data
-        print("\nClassified and refined data:")
+        # print("\nClassified and refined data:")
         for key, values in filtered_data.items():
-            print(f"\nTitle: {key}")
-            print(f"Data size: {len(values)}")
+            # print(f"\nTitle: {key}")
+            # print(f"Data size: {len(values)}")
             try:
                 total_length = sum(len(value) for value in values)
             except Exception:
                 total_length = 0
-            print(f"Total data string length: {total_length}")
-            for value in values:
-                print(f" - {value}")
+            # print(f"Total data string length: {total_length}")
+            # for value in values:
+            #     print(f" - {value}")
 
 
 

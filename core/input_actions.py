@@ -28,7 +28,7 @@ def create_domain_instructions(domain: DomainObject, rows: list) -> str:
 
     instruction_classify = Classify(rows).classify_data()
     
-    print(Classify(rows).classify_data())
+    print(f'Instruction classify: {instruction_classify}')
 
     instruction_classify_text = 'Column headings classified and refined:\n'
     for key, values in instruction_classify.items():
@@ -79,7 +79,7 @@ Your responses should always be in JSON format following this template:
 {{
     "do_action": {action_string} or "None" if not applicable,
     "action_status": "ready_to_process" if ready to process the user input do_action, "missing_data" if missing cell data or more information is needed, otherwise leave as "None",
-    "message": if action_status is "missing_data", provide the missing data information, otherwise leave nature conversation based on the input,
+    "message": if action_status is "missing_data", provide the missing data information, otherwise provide your answer as a nature conversation in here,
     "mongodb_condition_object": from input request, build a MongoDB condition object to filter the data. {{}} if not applicable,
     "mongodb_sample": Random item number, "" if not applicable,
     "mongodb_project": from input request, build a MongoDB $project object to get specific data. "" if not applicable,
@@ -161,6 +161,8 @@ Response:
 If users give some short keyword, you should search the table data and give the information back to the user.
 
 Ask users to provide all details for each action to avoid "missing_data" status where possible. The "row_values" must be list of {{key:value}} and reordered if the column titles are not in the correct order.
+
+Remember to always provide a nature conversation in the "message" field, formatted as a complete sentence.
 
 Your response should only be in JSON format'''
     return instruction_prompt
