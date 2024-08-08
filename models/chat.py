@@ -72,20 +72,20 @@ def get_chat_completions(request):
     # ===================== AI/DB Analysis ==========================================
     search_info = get_best_match(domain.name, input_text, 2)
 
-    if search_info:
-        # temp_system_message_content = list()
-        # remove latest message
-        latest_message =input_messages.pop(-1)
-        for message in search_info:
-            rag_message = f'''"{message.get('column_title', 'None')}" include: "{message.get('text', 'None')}"'''
-            input_messages.append({
-                "role": "system",
-                "content": rag_message
-            })
-            print('>>>DBRAG with: ', rag_message.encode('utf-8'), message.get('score', 0))
-        input_messages.append(latest_message)
-    else:
-        print('>>>DBRAG with: No match')
+    # if search_info:
+    #     # temp_system_message_content = list()
+    #     # remove latest message
+    #     latest_message =input_messages.pop(-1)
+    #     for message in search_info:
+    #         rag_message = f'''"{message.get('column_title', 'None')}" include: "{message.get('text', 'None')}"'''
+    #         input_messages.append({
+    #             "role": "system",
+    #             "content": rag_message
+    #         })
+    #         # print('>>>DBRAG with: ', rag_message.encode('utf-8'), message.get('score', 0))
+    #     input_messages.append(latest_message)
+    # else:
+    #     print('>>>DBRAG with: No match')
 
     try:
         # ===================== AI Analysis ==========================================
@@ -110,6 +110,7 @@ def get_chat_completions(request):
         action_status           = action_info.get('action_status', 'None') # 'ready_to_process', 'missing_data', 'None'
         action_message          = action_info.get('message', '')
         action_conditions:dict  = Util.convert_string_to_list(action_info.get('mongodb_condition_object', {}))
+        expected_columns        = action_info.get('expected_columns', [])
         action_column_values    = action_info.get('column_values', [])
         action_replace_query    = Util.convert_string_to_list(action_info.get('replace_query', {}))
         action_row_values       = action_info.get('row_values', [])
@@ -189,7 +190,6 @@ def get_chat_completions(request):
 
         if action_do == 'Edit cell' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Edit cell"')
-            # {'do_action': 'Edit cell', 'action_status': 'ready_to_process', 'message': '', 'mongodb_condition_object': {'Projects': 'American Club'}, 'column_values': [], 'replace_query': {'$set': {'Projects': 'Example project'}}, 'row_values': []}
             sheet                   = gspread_client.open_by_url(SPREADSHEET_URL).worksheet(google_selected_details['title'])
 
             # add domain filter
@@ -250,17 +250,28 @@ def get_chat_completions(request):
             # add domain filter
             action_conditions['domain'] = current_user['domain']
             infomation_result = list(collection_spreadsheets.find(json.loads(json.dumps(action_conditions))))
+            result_messages = []
             # if no row found, return message
             if len(infomation_result) == 0:
                 # remove action_message
                 action_message = ""
-                temp_messages.append("No data found")
+                temp_messages.append("No data found.")
+            else:
+                temp_messages.append("Found {total_rows} rows: ".format(total_rows=len(infomation_result)))
             for index, info in enumerate(infomation_result):
                 info.pop('_id')
                 info.pop('domain')
                 info.pop('row_index')
-                row_data = ', ' . join([f"{key}: {value}" for key, value in info.items()])
-                temp_messages.append('{}. {}'.format(index + 1, row_data))
+                # if expected_columns is [], get all values
+                if not expected_columns or len(expected_columns) == 0:
+                    row_data = ', '.join([f"{key}: {value}" for key, value in info.items()])
+                else:
+                    row_data = ', '.join([f"{key}: {value}" for key, value in info.items() if key in expected_columns])
+                print('row_data: ', expected_columns,  row_data)
+                # temp_messages.append('{}. {}'.format(index + 1, row_data))
+                result_messages.append('{}. {}'.format(index + 1, row_data))
+            temp_messages.append("\n".join(result_messages))
+            
         
         if action_do == 'Insert from URL' and action_status == 'ready_to_process':
             print('>>>>>>>>>>>>>>>>>>>> "Insert from URL"')
